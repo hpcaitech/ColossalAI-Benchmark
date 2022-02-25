@@ -1,10 +1,17 @@
-# Datasets
+# Step1: Datasets
 We do not host any datasets for GPT or BERT training, however, we detail their collection so that our results may be reproduced.
 
-## Collecting GPT Webtext Data
+
+## Option1: Use A Toy Dataset
+If you just want to go through the process quickly, you can download the a toy data (size 80MB).
+Down load it from [Google Cloud](https://drive.google.com/file/d/1eCY30B9g-I3oPdtQHR8rmIxx64Js_LZh/view?usp=sharing).
+
+
+## Option2: Prepare the Webtest Data
+### Collecting GPT Webtext Data
 We utilize the publicly available [OpenWebText](https://github.com/eukaryote31/openwebtext) library from [jcpeterson](https://github.com/jcpeterson/openwebtext) and [shenggan's](https://github.com/Shenggan/openwebtext)（modified  from [eukaryote31's](https://github.com/eukaryote31/openwebtext)) work to download urls. We then filtered, cleaned, and deduplicated all downloaded content according to the procedure described in Megatron's [openwebtext](./tools/openwebtext) directory. 
 
-### Install necessary packages
+#### Install necessary packages
 
 ```
     pip install ftfy langdetect numpy torch pandas nltk sentencepiece boto3 tqdm regex bs4 newspaper3k htmlmin tldextract cached-path
@@ -13,7 +20,7 @@ We utilize the publicly available [OpenWebText](https://github.com/eukaryote31/o
     python setup.py install   
 ```
 
-### Download Data
+#### Download Data
 
 1. Download the deduplicated URLs `<raw_urls>` from [jcpeterson](https://mega.nz/#F!EZZD0YwJ!9_PlEQzdMVLaNdKv_ICNVQ!cc4RgQQZ) 
 
@@ -29,7 +36,7 @@ We utilize the publicly available [OpenWebText](https://github.com/eukaryote31/o
    python openwebtext/download.py <input file clean_urls.txt> --n_procs 50
    ```
 
-### Prepare Data for GPT Training
+#### Prepare Data for GPT Training
 
 1. Perform ftfy, English detection and remove documents with less than 128 tokens. This step can be sharded and run on shards.
 
@@ -65,4 +72,21 @@ We utilize the publicly available [OpenWebText](https://github.com/eukaryote31/o
    ```
 
 
+## Step2: Training
 
+Run GPT training using 4 GPUs with vanilla parallel strategy. You can try other strategies by using different files from ./configs.
+The training last for 10 steps.
+
+```python
+NUM_GPUS_PER_NODE=4
+NUM_NODES=1
+NODE_RANK=0
+
+export EXEC="torchrun"
+export CONFIG="./configs/gpt2_vanilla.py"
+
+DATA=/your_own_path/small-gpt-dataset.json ${EXEC} --nproc_per_node=${NUM_GPUS_PER_NODE} \
+                                 --nnodes=${NUM_NODES} \
+                                 --node_rank=${NODE_RANK} \
+                                 train.py --from_torch --config=${CONFIG}
+```
