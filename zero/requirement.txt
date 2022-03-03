@@ -1,0 +1,4 @@
+colossalai
+deepspeed
+fairscale
+rich
