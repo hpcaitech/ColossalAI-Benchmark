@@ -1,5 +1,12 @@
 {
     "method": "deepspeed",
+    "model": {
+        "type": "gpt2_xl"
+    },
+    "hyperparameter": {
+        "batch_size": 4,
+        "steps_per_epoch":10
+    },
     "train_batch_size": 32,
     "steps_per_print": 2147483647,
     "zero_optimization": {

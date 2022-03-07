@@ -1,6 +1,12 @@
 {
-    "method": "colossalai",
-    "mixed_precision": {
+    "method": "torch",
+    "model": {
+        "type": "vit_h"
+    },
+    "hyperparameter": {
+        "batch_size": 4
+    },
+    "fp16": {
         "enabled": true,
         "init_scale": 32768,
         "growth_factor": 2.0,
@@ -8,12 +14,5 @@
         "growth_interval": 1000
     },
     "gradient_clipping": 1.0,
-    "zero": {
-        "level": 3,
-        "mixed_precision": true,
-        "offload_config": {
-            "device": "cpu"
-        }
-    },
     "use_mem_monitor": true
 }

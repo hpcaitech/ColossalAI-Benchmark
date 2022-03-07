@@ -48,17 +48,20 @@ def build_cifar(batch_size):
 
 def train_cifar():
     disable_existing_loggers()
-    args = colossalai.get_default_parser().parse_args()
-    # standard launch
-    # colossalai.launch(config=args.config,
-    #                   rank=args.rank,
-    #                   world_size=args.world_size,
-    #                   local_rank=args.local_rank,
-    #                   host=args.host,
-    #                   port=args.port)
-
-    # launch from torchrun
-    colossalai.launch_from_torch(config=args.config)
+    parser = colossalai.get_default_parser()
+    parser.add_argument('--from_torch', default=False, action='store_true')
+    args = parser.parse_args()
+    if args.from_torch:
+        colossalai.launch_from_torch(config=args.config, seed=42)
+    else:
+        # standard launch
+        colossalai.launch(config=args.config,
+                          rank=args.rank,
+                          world_size=args.world_size,
+                          local_rank=args.local_rank,
+                          host=args.host,
+                          port=args.port,
+                          seed=42)
 
     logger = get_dist_logger()
     if hasattr(gpc.config, 'LOG_PATH'):

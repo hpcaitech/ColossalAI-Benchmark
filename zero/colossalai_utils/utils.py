@@ -1,21 +1,30 @@
-def init_w_col(builder, config):
-    import colossalai
-    from colossalai.amp import AMP_TYPE
-    from colossalai.logging import disable_existing_loggers
-    from fairscale.optim.grad_scaler import ShardedGradScaler
+import torch
+from common.utils import CONFIG
 
-    col_amp = {'apex': AMP_TYPE.APEX, 'naive': AMP_TYPE.NAIVE, 'torch': AMP_TYPE.TORCH}
-    if 'fp16' in config:
-        config['fp16']['mode'] = col_amp[config['fp16']['mode']]
+
+def init_w_col(builder):
+    import colossalai
+    from colossalai.core import global_context as gpc
+    from colossalai.logging import disable_existing_loggers
+    from colossalai.zero.init_ctx import ZeroInitContext
+    from colossalai.zero.shard_utils import TensorShardStrategy
+    from colossalai.zero.sharded_model import ShardedModelV2
+    from colossalai.zero.sharded_optim import ShardedOptimizerV2
 
     disable_existing_loggers()
-    colossalai.launch_from_torch(config=config)
+    colossalai.launch_from_torch(config=CONFIG)
 
     build_data, build_model, build_loss, build_optimizer, build_scheduler = builder()
 
     train_data, test_data = build_data()
 
-    model = build_model()
+    shard_strategy = TensorShardStrategy()
+    with ZeroInitContext(convert_fp16='fp16' in gpc.config,
+                         convert_cuda=torch.cuda.is_available(),
+                         shard_strategy=shard_strategy,
+                         shard_param=True):
+        model = build_model()
+    model = ShardedModelV2(model, shard_strategy, **gpc.config.zero)
 
     criterion = build_loss()
 
@@ -23,8 +32,6 @@ def init_w_col(builder, config):
 
     lr_scheduler = build_scheduler(len(train_data), optimizer)
 
-    scaler = ShardedGradScaler(**config['mixed_precision']) if 'mixed_precision' in config else None
+    optimizer = ShardedOptimizerV2(optimizer, model, shard_strategy, **gpc.config.get('fp16', dict()))
 
-    engine, _, _, lr_scheduler = colossalai.initialize(model, optimizer, criterion, lr_scheduler=lr_scheduler)
-
-    return engine, train_data, test_data, engine.criterion, engine.optimizer, scaler, lr_scheduler
+    return model, train_data, test_data, criterion, optimizer, None, lr_scheduler
