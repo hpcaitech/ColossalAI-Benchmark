@@ -1,6 +1,7 @@
 import os
 
 import torch
+from colossalai.nn.optimizer import CPUAdam
 from torch.distributed import get_world_size
 from transformers import GPT2Config, GPT2LMHeadModel, GPT2Tokenizer
 
@@ -163,9 +164,9 @@ def build_loss():
 
 
 def build_optimizer(params):
-    optimizer = torch.optim.Adam(params,
-                                 lr=CONFIG['hyperparameter']['learning_rate'],
-                                 weight_decay=CONFIG['hyperparameter']['weight_decay'])
+    optimizer = CPUAdam(params,
+                        lr=CONFIG['hyperparameter']['learning_rate'],
+                        weight_decay=CONFIG['hyperparameter']['weight_decay'])
     return optimizer
 
 
