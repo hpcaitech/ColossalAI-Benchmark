@@ -5,7 +5,7 @@ from colossalai.nn.optimizer import CPUAdam
 from torch.distributed import get_world_size
 from transformers import GPT2Config, GPT2LMHeadModel, GPT2Tokenizer
 
-from common.utils import CONFIG, ModelFromHF, get_model_size
+from common.utils import CONFIG, ModelFromHF
 
 _gpt2_small = dict(
     seq_length=1024,
@@ -63,7 +63,7 @@ def build_data():
 
     import numpy as np
     from datasets import load_from_disk, set_progress_bar_enabled
-    from torch.utils.data import DataLoader, DistributedSampler, Dataset
+    from torch.utils.data import DataLoader, Dataset, DistributedSampler
     from transformers import default_data_collator
 
     world_size = get_world_size()
@@ -229,7 +229,5 @@ def gpt2_builder():
 
     CONFIG['dataset'] = os.environ['DATA']
     CONFIG['tokenizer'] = os.environ['TOKENIZER']
-    if CONFIG['model'].get('numel', None) is None:
-        CONFIG['model']['numel'] = get_model_size(build_model())
 
     return build_data, build_model, build_loss, build_optimizer, build_scheduler
