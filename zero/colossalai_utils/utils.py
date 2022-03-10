@@ -8,7 +8,7 @@ def init_w_col(builder):
     from colossalai.logging import disable_existing_loggers
     from colossalai.zero.init_ctx import ZeroInitContext
     from colossalai.zero.shard_utils import TensorShardStrategy
-    from colossalai.zero.sharded_model import ShardedModelV2, ShardedModel
+    from colossalai.zero.sharded_model import ShardedModel, ShardedModelV2
     from colossalai.zero.sharded_optim import ShardedOptimizerV2
 
     disable_existing_loggers()
@@ -23,18 +23,17 @@ def init_w_col(builder):
     if use_v2:
         shard_strategy = TensorShardStrategy()
         with ZeroInitContext(convert_fp16='fp16' in gpc.config,
-                            convert_cuda=torch.cuda.is_available(),
-                            shard_strategy=shard_strategy,
-                            shard_param=True):
+                             target_device=torch.device(gpc.config.zero.offload_config.device),
+                             shard_strategy=shard_strategy,
+                             shard_param=True):
             model = build_model()
     else:
         model = build_model()
-    
+
     if use_v2:
         model = ShardedModelV2(model, shard_strategy, **gpc.config.zero)
     else:
         model = ShardedModel(model, **gpc.config.zero)
-
 
     criterion = build_loss()
 
@@ -45,6 +44,7 @@ def init_w_col(builder):
     cpu_offload = gpc.config.zero.offload_config.device == 'cpu'
 
     if use_v2:
-        optimizer = ShardedOptimizerV2(optimizer, model, shard_strategy, **gpc.config.get('fp16', dict()), cpu_offload=cpu_offload)
+        optimizer = ShardedOptimizerV2(optimizer, model, shard_strategy, **
+                                       gpc.config.get('fp16', dict()), cpu_offload=cpu_offload)
 
     return model, train_data, test_data, criterion, optimizer, None, lr_scheduler
