@@ -61,12 +61,12 @@ def build_data():
     from itertools import chain
 
     import numpy as np
-    from datasets import load_dataset, set_progress_bar_enabled
+    from datasets import load_from_disk, set_progress_bar_enabled
     from torch.utils.data import DataLoader, DistributedSampler
     from transformers import default_data_collator
 
     set_progress_bar_enabled(False)
-    dataset = load_dataset('wikitext', 'wikitext-2-v1', cache_dir=CONFIG['dataset'])
+    dataset = load_from_disk(CONFIG['dataset'])
     tokenizer = GPT2Tokenizer(vocab_file=CONFIG['tokenizer'] + '/vocab.json',
                               merges_file=CONFIG['tokenizer'] + '/merges.txt')
 
