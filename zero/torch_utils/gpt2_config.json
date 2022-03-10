@@ -1,10 +1,11 @@
 {
     "method": "torch",
     "model": {
-        "type": "gpt2_xl"
+        "type": "gpt2_small"
     },
     "hyperparameter": {
-        "batch_size": 4
+        "batch_size": 3,
+        "synthetic": true
     },
     "fp16": {
         "enabled": true,

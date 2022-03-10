@@ -63,46 +63,77 @@ def build_data():
 
     import numpy as np
     from datasets import load_from_disk, set_progress_bar_enabled
-    from torch.utils.data import DataLoader, DistributedSampler
+    from torch.utils.data import DataLoader, DistributedSampler, Dataset
     from transformers import default_data_collator
 
-    set_progress_bar_enabled(False)
-    dataset = load_from_disk(CONFIG['dataset'])
-    tokenizer = GPT2Tokenizer(vocab_file=CONFIG['tokenizer'] + '/vocab.json',
-                              merges_file=CONFIG['tokenizer'] + '/merges.txt')
-
-    def tokenize(examples, mode='concat'):
-        assert mode in ['concat', 'pad']
-
-        seq_len = CONFIG['model']['seq_length']
-        if mode == 'concat':
-            examples = tokenizer(examples['text'])
-            concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
-            total_length = len(concatenated_examples[list(examples.keys())[0]])
-            if total_length >= seq_len:
-                total_length = (total_length // seq_len) * seq_len
-
-            result = {
-                k: [t[i:i + seq_len] for i in range(0, total_length, seq_len)]
-                for k, t in concatenated_examples.items()
-            }
-        else:
-            tokenizer.pad_token = tokenizer.unk_token
-            result = tokenizer(examples, padding=True, truncation=True, max_length=seq_len, return_tensors='pt')
-
-        result["labels"] = copy.deepcopy(result["input_ids"])
-
-        return result
-
-    tokenized_dataset = dataset.map(partial(tokenize, mode=CONFIG['hyperparameter']['tokenize_mode']),
-                                    batched=True,
-                                    num_proc=16,
-                                    load_from_cache_file=False,
-                                    remove_columns='text')
-
-    CONFIG['model']['vocab_size'] = len(tokenizer)
-
     world_size = get_world_size()
+
+    if CONFIG['hyperparameter'].get('synthetic'):
+
+        class SyntheticDataset(Dataset):
+
+            def __init__(self, vocab_size, seq_length, size) -> None:
+                super().__init__()
+                self.size = size
+                self.vocab_size = vocab_size
+                self.seq_length = seq_length
+
+            def __len__(self):
+                return self.size
+
+            def __getitem__(self, _):
+                input_ids = torch.randint(self.vocab_size, (self.seq_length, ))
+                attention_mask = torch.ones((self.seq_length, ), dtype=torch.long)
+                return {'input_ids': input_ids, 'attention_mask': attention_mask, 'labels': input_ids.clone()}
+
+        vocab_size = CONFIG['model']['vocab_size']
+        seq_len = CONFIG['model']['seq_length']
+        train_size = CONFIG['hyperparameter']['batch_size'] * world_size * CONFIG['hyperparameter'].get(
+            'steps_per_epoch', 100)
+        test_size = CONFIG['hyperparameter']['batch_size'] * world_size * CONFIG['hyperparameter'].get(
+            'steps_per_epoch', 10)
+        tokenized_dataset = {
+            'train': SyntheticDataset(vocab_size, seq_len, train_size),
+            'validation': SyntheticDataset(vocab_size, seq_len, test_size)
+        }
+
+    else:
+        set_progress_bar_enabled(False)
+        dataset = load_from_disk(CONFIG['dataset'])
+        tokenizer = GPT2Tokenizer(vocab_file=CONFIG['tokenizer'] + '/vocab.json',
+                                  merges_file=CONFIG['tokenizer'] + '/merges.txt')
+
+        def tokenize(examples, mode='concat'):
+            assert mode in ['concat', 'pad']
+
+            seq_len = CONFIG['model']['seq_length']
+            if mode == 'concat':
+                examples = tokenizer(examples['text'])
+                concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
+                total_length = len(concatenated_examples[list(examples.keys())[0]])
+                if total_length >= seq_len:
+                    total_length = (total_length // seq_len) * seq_len
+
+                result = {
+                    k: [t[i:i + seq_len] for i in range(0, total_length, seq_len)]
+                    for k, t in concatenated_examples.items()
+                }
+            else:
+                tokenizer.pad_token = tokenizer.unk_token
+                result = tokenizer(examples, padding=True, truncation=True, max_length=seq_len, return_tensors='pt')
+
+            result["labels"] = copy.deepcopy(result["input_ids"])
+
+            return result
+
+        tokenized_dataset = dataset.map(partial(tokenize, mode=CONFIG['hyperparameter']['tokenize_mode']),
+                                        batched=True,
+                                        num_proc=16,
+                                        load_from_cache_file=False,
+                                        keep_in_memory=True,
+                                        remove_columns='text')
+
+        CONFIG['model']['vocab_size'] = len(tokenizer)
 
     def seed_worker(_):
         worker_seed = 1024
