@@ -20,8 +20,8 @@
         "reshard_after_forward": false, 
         "offload_config" : {
             "device": "cpu"
-        }
+        },
+        "version": 1
     },
-    "use_mem_monitor": true,
-    "sharded_model_version": 1
+    "use_mem_monitor": true
 }

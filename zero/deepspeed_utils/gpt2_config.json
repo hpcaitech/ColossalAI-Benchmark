@@ -5,9 +5,9 @@
     },
     "hyperparameter": {
         "batch_size": 4,
-        "steps_per_epoch":10
+        "steps_per_epoch": 20
     },
-    "train_batch_size": 32,
+    "train_batch_size": 8,
     "steps_per_print": 2147483647,
     "zero_optimization": {
         "stage": 3,

@@ -6,14 +6,16 @@ from transformers import ViTConfig, ViTForImageClassification
 
 from common.utils import CONFIG, ModelFromHF
 
-_vit_base = dict(
+_vit_b = dict(
     img_size=224,
     patch_size=16,
     hidden_size=768,
+    intermediate_size=3072,
     num_heads=12,
     depth=12,
     dropout=0.1,
     num_labels=1000,
+    numel=86567656,
     checkpoint=False,
     evaluation='acc',
 )
@@ -22,10 +24,26 @@ _vit_h = dict(
     img_size=224,
     patch_size=16,
     hidden_size=1280,
+    intermediate_size=5120,
     num_heads=16,
     depth=32,
     dropout=0.1,
     num_labels=1000,
+    numel=632199400,
+    checkpoint=True,
+    evaluation='acc',
+)
+
+_vit_g = dict(
+    img_size=224,
+    patch_size=14,
+    hidden_size=1664,
+    intermediate_size=8192,
+    num_heads=16,
+    depth=48,
+    dropout=0.1,
+    num_labels=1000,
+    numel=1844440680,
     checkpoint=True,
     evaluation='acc',
 )
@@ -34,18 +52,21 @@ _vit_10b = dict(
     img_size=224,
     patch_size=16,
     hidden_size=4096,
+    intermediate_size=16384,
     num_heads=16,
     depth=50,
     dropout=0.1,
     num_labels=1000,
+    numel=10077058024,
     checkpoint=True,
     evaluation='acc',
 )
 
 _vit_configurations = dict(
-    vit=_vit_base,
-    vit_base=_vit_base,
+    vit=_vit_b,
+    vit_b=_vit_b,
     vit_h=_vit_h,
+    vit_g=_vit_g,
     vit_10b=_vit_10b,
 )
 
@@ -204,7 +225,7 @@ def build_model():
     vit_config = ViTConfig(image_size=CONFIG['model']['img_size'],
                            patch_size=CONFIG['model']['patch_size'],
                            hidden_size=CONFIG['model']['hidden_size'],
-                           intermediate_size=CONFIG['model']['hidden_size'] * 4,
+                           intermediate_size=CONFIG['model']['intermediate_size'],
                            num_hidden_layers=CONFIG['model']['depth'],
                            hidden_dropout_prob=CONFIG['model']['dropout'],
                            num_attention_heads=CONFIG['model']['num_heads'],

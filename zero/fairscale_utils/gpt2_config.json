@@ -5,7 +5,9 @@
         "checkpoint": false
     },
     "hyperparameter": {
-        "batch_size": 4
+        "batch_size": 4,
+        "steps_per_epoch": 20,
+        "synthetic": true
     },
     "fp16": {
         "enabled": true,
