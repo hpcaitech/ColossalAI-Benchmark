@@ -1,11 +1,12 @@
 {
     "method": "colossalai",
     "model": {
-        "type": "gpt2_10b"
+        "type": "gpt2_10b",
+        "numel": 9.57
     },
     "hyperparameter": {
-        "batch_size": 3,
-        "steps_per_epoch":10
+        "batch_size": 48,
+        "steps_per_epoch": 10
     },
     "fp16": {
         "initial_scale": 32768,
