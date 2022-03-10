@@ -17,7 +17,6 @@ def init_w_col(builder):
 
     build_data, build_model, build_loss, build_optimizer, build_scheduler = builder()
 
-    print_log('Building data')
     train_data, test_data = build_data()
 
     use_v2 = gpc.config.get('sharded_model_version', 2) == 2
@@ -40,7 +39,8 @@ def init_w_col(builder):
         model = ShardedModel(model, **gpc.config.zero)
 
     criterion = build_loss()
-    print_log(f'GPU Mem: {torch.cuda.max_memory_allocated(dist.get_rank()) / (1024 * 1024)} M')
+    print_log(
+        f'GPU Mem: {torch.cuda.max_memory_allocated(dist.get_rank()) / (1024 * 1024)} M')
     print_log('Building optimizer')
     optimizer = build_optimizer(model.parameters())
 
@@ -52,5 +52,6 @@ def init_w_col(builder):
         optimizer = ShardedOptimizerV2(optimizer, model, shard_strategy, **
                                        gpc.config.get('fp16', dict()), cpu_offload=cpu_offload)
 
-    print_log(f'GPU Mem: {torch.cuda.max_memory_allocated(dist.get_rank()) / (1024 * 1024)} M')
+    print_log(
+        f'GPU Mem: {torch.cuda.max_memory_allocated(dist.get_rank()) / (1024 * 1024)} M')
     return model, train_data, test_data, criterion, optimizer, None, lr_scheduler
