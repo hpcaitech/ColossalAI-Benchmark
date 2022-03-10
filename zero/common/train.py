@@ -5,7 +5,7 @@ import torch
 from torch.distributed import all_reduce, get_rank, get_world_size
 from tqdm import tqdm
 
-from common.utils import CONFIG, AsyncMemoryMonitor, print_log
+from common.utils import CONFIG, AsyncMemoryMonitor, get_tflops, print_log
 
 _numel = None
 
@@ -34,8 +34,6 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
     num_steps = 0
     num_samples = torch.zeros(()).to(torch.int).to(rank)
     num_tokens = torch.zeros(()).to(torch.int).to(rank)
-
-    numel = _numel
 
     data_iter = iter(train_dataloader)
 
@@ -136,12 +134,13 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
         used_time += batch_time
 
         if rank == 0:
+            tflops = get_tflops(CONFIG['model']['numel'], batch_time, batch_size, CONFIG['model']['seq_length'])
             progress.set_postfix(loss=loss.item(),
                                  lr=lr_scheduler.get_last_lr()[0],
                                  time_forward=fwd_time,
                                  time_backward=bwd_time,
                                  throughput=batch_size * world_size / (batch_time + 1e-12),
-                                 tflops=(numel * batch_tokens * world_size * 2.0 * 4.0 * 1e-12) / (batch_time + 1e-12))
+                                 tflops=tflops)
 
     peak_mem = None
     if mem_monitor is not None:
@@ -153,7 +152,7 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
 
     msg = f'[Epoch {epoch} / Train]: Loss = {train_loss.item() / (world_size * num_steps):.3f}'
     msg += f' | Throughput = {num_samples.item() / (used_time + 1e-12):.3f} samples/sec'
-    msg += f' | TFLOPS = {num_tokens.item() * numel * 2.0 * 4.0 * 1e-12 / (used_time + 1e-12):.3f}'
+    msg += f" | TFLOPS = {get_tflops(CONFIG['model']['numel'], used_time, CONFIG['hyperparameter']['batch_size']*len(progress), CONFIG['model']['seq_length']):.3f}"
     if peak_mem is not None:
         msg += f' | Peak memory = {peak_mem / 1024:.3f} GB.'
     print_log(msg)
