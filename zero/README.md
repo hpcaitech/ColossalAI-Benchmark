@@ -33,3 +33,11 @@ pip install .
 ```
 DATA=/PATH/TO/DATASET TOKENIZER=/PATH/TO/TOKENIZER LOG=/PATH/TO/LOG torchrun --nproc_per_node=NUM_GPUS run.py --config=CONFIG_FILE
 ```
+
+## VIT Usage
+1. Prepare ImageNet-1k datasets (TFrecord version).
+
+2. Run benchmark with one of the systems to evaluate
+```
+DATA=/PATH/TO/DATASET LOG=/PATH/TO/LOG torchrun --nproc_per_node=NUM_GPUS run.py --config=CONFIG_FILE
+```

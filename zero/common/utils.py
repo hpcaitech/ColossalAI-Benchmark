@@ -27,7 +27,7 @@ def load_config():
 
 class AsyncMemoryMonitor:
 
-    def __init__(self, rank, power=3):
+    def __init__(self, rank, power=3, save_to_disk=True):
         """
         Adapted from https://github.com/Tencent/PatrickStar/blob/master/patrickstar/core/memtracer/memtracer.py.
         An Async Mem Monitor runing during computing.
@@ -39,7 +39,7 @@ class AsyncMemoryMonitor:
         self.monitor_thread = None
         self.interval = 1 / (10**power)
         self.rank = rank
-        self.file = os.path.join(CONFIG['log_path'], f'memory_rank_{rank}.log')
+        self.file = os.path.join(CONFIG['log_path'], f'memory_rank_{rank}.log') if save_to_disk else None
 
     def set_interval(self, power: int):
         self.interval = 1 / (10**power)
@@ -55,8 +55,9 @@ class AsyncMemoryMonitor:
         self.keep_measuring = False
         gpu_usage = self.monitor_thread.result()
         self.monitor_thread = None
-        with open(self.file, 'a') as f:
-            f.writelines(list(map(lambda x: str(x) + '\n', gpu_usage)))
+        if self.file is not None:
+            with open(self.file, 'a') as f:
+                f.writelines(list(map(lambda x: str(x) + '\n', gpu_usage)))
         return gpu_usage
 
     def _measure_usage(self):
