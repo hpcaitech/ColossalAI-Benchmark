@@ -32,6 +32,8 @@ def init_w_col(builder):
 
     lr_scheduler = build_scheduler(len(train_data), optimizer)
 
-    optimizer = ShardedOptimizerV2(optimizer, model, shard_strategy, **gpc.config.get('fp16', dict()))
+    cpu_offload = gpc.config.zero.offload_config.device == 'cpu'
+
+    optimizer = ShardedOptimizerV2(optimizer, model, shard_strategy, **gpc.config.get('fp16', dict()), cpu_offload=cpu_offload)
 
     return model, train_data, test_data, criterion, optimizer, None, lr_scheduler

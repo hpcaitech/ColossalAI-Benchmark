@@ -1,10 +1,10 @@
 {
     "method": "colossalai",
     "model": {
-        "type": "gpt2_xl"
+        "type": "gpt2_10b"
     },
     "hyperparameter": {
-        "batch_size": 4,
+        "batch_size": 3,
         "steps_per_epoch":10
     },
     "fp16": {
@@ -14,7 +14,7 @@
         "backoff_factor": 0.5,
         "growth_interval": 1000
     },
-    "gradient_clipping": 1.0,
+    "gradient_clipping": 0.0,
     "zero": {
         "reduce_scatter_bucket_size_mb": 25,
         "fp32_reduce_scatter": false,
