@@ -197,6 +197,7 @@ def gpt2_builder():
 
     CONFIG['dataset'] = os.environ['DATA']
     CONFIG['tokenizer'] = os.environ['TOKENIZER']
-    CONFIG['model']['numel'] = get_model_size(build_model())
+    if CONFIG['model'].get('numel', None) is None:
+        CONFIG['model']['numel'] = get_model_size(build_model())
 
     return build_data, build_model, build_loss, build_optimizer, build_scheduler
