@@ -5,10 +5,7 @@ import torch
 from torch.distributed import all_reduce, get_rank, get_world_size
 from tqdm import tqdm
 
-from common.utils import CONFIG, AsyncMemoryMonitor, print_log, profile_model
-
-_num_params = None
-_flops = None
+from common.utils import CONFIG, AsyncMemoryMonitor, get_tflops, print_log
 
 
 def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimizer, lr_scheduler, scaler, mem_monitor):
@@ -34,7 +31,7 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
     used_time = 0.
     num_steps = 0
     num_samples = torch.zeros(()).to(torch.int).to(rank)
-    flops = _flops
+    accum_flops = torch.zeros(()).to(torch.float).to(rank)
 
     data_iter = iter(train_dataloader)
 
@@ -128,6 +125,8 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
         bwd_time = bwd_end - bwd_start
         batch_time = fwd_time + bwd_time
         used_time += batch_time
+        flops = get_tflops(CONFIG['model']['numel'], batch_time, batch_size, CONFIG['model']['seq_length'])
+        accum_flops += flops
 
         if rank == 0:
             progress.set_postfix(loss=loss.item(),
@@ -135,7 +134,7 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
                                  time_forward=fwd_time,
                                  time_backward=bwd_time,
                                  throughput=batch_size * world_size / (batch_time + 1e-12),
-                                 tflops=(3 * flops * 1e-12) / (batch_time + 1e-12))
+                                 tflops=flops)
 
     peak_mem = None
     if mem_monitor is not None:
@@ -143,10 +142,11 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
 
     all_reduce(train_loss)
     all_reduce(num_samples)
+    all_reduce(accum_flops)
 
     msg = f'[Epoch {epoch} / Train]: Loss = {train_loss.item() / (world_size * num_steps):.3f}'
     msg += f' | Throughput = {num_samples.item() / (used_time + 1e-12):.3f} samples/sec'
-    msg += f' | TFLOPS = {3 * flops * num_steps * 1e-12 / (used_time + 1e-12):.3f}'
+    msg += f' | TFLOPS = {accum_flops.item() / (world_size * num_steps):.3f}'
     if peak_mem is not None:
         msg += f' | Peak memory = {peak_mem / 1024:.3f} GB.'
     print_log(msg)
@@ -171,8 +171,7 @@ def _test(epoch, rank, world_size, test_dataloader, model, criterion, mem_monito
     num_steps = 0
     num_samples = torch.zeros(()).to(torch.int).to(rank)
     correct = torch.zeros(()).to(torch.int).to(rank)
-
-    flops = _flops
+    accum_flops = torch.zeros(()).to(torch.float).to(rank)
 
     data_iter = iter(test_dataloader)
 
@@ -214,12 +213,14 @@ def _test(epoch, rank, world_size, test_dataloader, model, criterion, mem_monito
 
             batch_time = batch_end - batch_start
             used_time += batch_time
+            flops = get_tflops(CONFIG['model']['numel'], batch_time, batch_size, CONFIG['model']['seq_length'])
+            accum_flops += flops
 
             if rank == 0:
                 metrics = dict(loss=loss.item(),
                                step_time=batch_time,
                                throughput=batch_size * world_size / (batch_time + 1e-12),
-                               tflops=(flops * 1e-12) / (batch_time + 1e-12))
+                               tflops=flops)
                 if evaluation == 'ppl':
                     metrics['perplexity'] = math.exp(loss.item())
                 elif evaluation == 'acc':
@@ -241,6 +242,7 @@ def _test(epoch, rank, world_size, test_dataloader, model, criterion, mem_monito
     all_reduce(num_samples)
     if evaluation == 'acc':
         all_reduce(correct)
+    all_reduce(accum_flops)
 
     msg = f'[Epoch {epoch} / Test]: Loss = {reduced_loss:.3f}'
     if evaluation == 'ppl':
@@ -248,7 +250,7 @@ def _test(epoch, rank, world_size, test_dataloader, model, criterion, mem_monito
     else:
         msg += f' | Accuracy = {correct.item() * 100 / num_samples.item():.3f} %'
     msg += f' | Throughput = {num_samples.item() / (used_time + 1e-12):.3f} samples/sec'
-    msg += f' | TFLOPS = {flops * num_steps * 1e-12 / (used_time + 1e-12):.3f}'
+    msg += f' | TFLOPS = {accum_flops.item() / (world_size * num_steps):.3f}'
     if peak_mem is not None:
         msg += f' | Peak memory = {peak_mem / 1024:.3f} GB.'
     print_log(msg)
@@ -262,11 +264,7 @@ def train(model, train_data, test_data, criterion, optimizer, scaler, lr_schedul
     if CONFIG.get('use_mem_monitor'):
         mem_monitor = AsyncMemoryMonitor(rank)
 
-    global _num_params
-    global _flops
-    _, _flops, _, _num_params = profile_model(model, train_data)
-
-    print_log(f'Model is built (parameter size = {_num_params / 1e6:.3f} M).')
+    print_log(f'Model is built (parameter size = {CONFIG["model"]["numel"]:.3f} B).')
 
     print_log('Benchmark start.')
 
