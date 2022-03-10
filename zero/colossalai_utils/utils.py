@@ -2,7 +2,7 @@ def init_w_col(builder, config):
     import colossalai
     from colossalai.amp import AMP_TYPE
     from colossalai.logging import disable_existing_loggers
-    from fairscale.optim.grad_scaler import ShardedGradScaler
+    from colossalai.zero import ShardedModel
 
     col_amp = {'apex': AMP_TYPE.APEX, 'naive': AMP_TYPE.NAIVE, 'torch': AMP_TYPE.TORCH}
     if 'fp16' in config:
@@ -16,6 +16,7 @@ def init_w_col(builder, config):
     train_data, test_data = build_data()
 
     model = build_model()
+    model = ShardedModel(model, mixed_precision=True, reshard_after_forward=False, offload_config=dict(device='cpu'))
 
     criterion = build_loss()
 
@@ -23,8 +24,8 @@ def init_w_col(builder, config):
 
     lr_scheduler = build_scheduler(len(train_data), optimizer)
 
-    scaler = ShardedGradScaler(**config['mixed_precision']) if 'mixed_precision' in config else None
+    # scaler = ShardedGradScaler(**config['mixed_precision']) if 'mixed_precision' in config else None
 
-    engine, _, _, lr_scheduler = colossalai.initialize(model, optimizer, criterion, lr_scheduler=lr_scheduler)
+    # engine, _, _, lr_scheduler = colossalai.initialize(model, optimizer, criterion, lr_scheduler=lr_scheduler)
 
-    return engine, train_data, test_data, engine.criterion, engine.optimizer, scaler, lr_scheduler
+    return model, train_data, test_data, criterion, optimizer, None, lr_scheduler

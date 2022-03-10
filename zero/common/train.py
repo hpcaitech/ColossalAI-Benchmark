@@ -67,6 +67,7 @@ def _print_log(msg):
 def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimizer, lr_scheduler, scaler, mem_monitor,
            config):
     use_optimizer_backward = config['method'] in ['colossalai']
+    use_col = config['method'] in ['colossalai']
     if use_optimizer_backward and 'zero' in config:
         assert 'level' in config['zero'], 'Please provide zero level.'
         use_optimizer_backward = use_optimizer_backward and config['zero']['level'] < 3
@@ -97,6 +98,8 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
         fwd_start = time.time()
 
         optimizer.zero_grad()
+        if use_col:
+            model.zero_grad(set_to_none=True)
 
         batch = next(data_iter)
         input_ids = batch['input_ids'].to(rank)
@@ -116,7 +119,12 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
 
         bwd_start = time.time()
 
-        if use_integrated_backward:  # deepspeed & patrickstar style
+        
+        if use_col:
+            loss.backward()
+            optimizer.step()
+            lr_scheduler.step()
+        elif use_integrated_backward:  # deepspeed & patrickstar style
             model.backward(loss)
             if use_integrated_step:
                 model.step()  # deepspeed style

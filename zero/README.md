@@ -3,14 +3,19 @@ GPT2 ZeRO benchmark with data parallelism to evaluate Colossal-AI, DeepSpeed, Fa
 
 ## Setup
 1. Install dependencies
+
 ```
-pip install -r requirement.txt
+pip install -r requirements.txt
 ```
+
 2. Download PatrickStar from github
+
+```shell
+git clone https://github.com/Tencent/PatrickStar.git
 ```
-https://github.com/Tencent/PatrickStar.git
-```
+
 3. Install PatrickStar
+
 ```
 cd PatrickStar
 pip install .

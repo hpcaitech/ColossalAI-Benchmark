@@ -18,9 +18,9 @@ TOKEN_MODE = 'concat'
 BATCH_SIZE = 4
 SEQ_LEN = 1024
 VOCAB_SIZE = 50257
-HIDDEN_SIZE = 768
-NUM_HEADS = 12
-DEPTH = 12
+HIDDEN_SIZE = 4096
+NUM_HEADS = 16
+DEPTH = 50
 LEARNING_RATE = 0.00015
 WEIGHT_DECAY = 1e-2
 NUM_EPOCHS = 2
@@ -29,7 +29,7 @@ WARMUP_EPOCHS = 1
 
 def build_data():
     set_progress_bar_enabled(False)
-    dataset = load_dataset('wikitext', 'wikitext-2-v1', cache_dir=DATA_PATH)
+    dataset = load_dataset('wikitext', 'wikitext-2-v1', cache_dir='./tmp')
     tokenizer = GPT2Tokenizer(vocab_file=TOKEN_PATH + '/vocab.json', merges_file=TOKEN_PATH + '/merges.txt')
 
     def tokenize(examples, mode='concat'):
@@ -93,6 +93,7 @@ class ModelFromHF(torch.nn.Module):
     def __init__(self, config):
         super().__init__()
         self.module = GPT2LMHeadModel(config)
+        self.module.transformer.gradient_checkpointing = True
 
     def forward(self, *args, **kwargs):
         output = self.module(*args, **kwargs)
