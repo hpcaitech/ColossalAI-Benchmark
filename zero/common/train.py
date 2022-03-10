@@ -7,8 +7,6 @@ from tqdm import tqdm
 
 from common.utils import CONFIG, AsyncMemoryMonitor, get_tflops, print_log
 
-_numel = None
-
 
 def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimizer, lr_scheduler, scaler, mem_monitor):
     use_optimizer_backward = CONFIG['method'] in ['colossalai']
@@ -179,8 +177,6 @@ def _test(epoch, rank, world_size, test_dataloader, model, criterion, mem_monito
     num_tokens = torch.zeros(()).to(torch.int).to(rank)
     correct = torch.zeros(()).to(torch.int).to(rank)
 
-    numel = _numel
-
     data_iter = iter(test_dataloader)
 
     if mem_monitor is not None:
@@ -275,12 +271,7 @@ def train(model, train_data, test_data, criterion, optimizer, scaler, lr_schedul
     if CONFIG.get('use_mem_monitor'):
         mem_monitor = AsyncMemoryMonitor(rank)
 
-    global _numel
-    _numel = 0
-    for p in model.parameters():
-        _numel += p.numel()
-
-    print_log(f'Model is built (parameter size = {_numel / 1e6:.3f} M).')
+    print_log(f'Model is built (parameter size = {CONFIG["model"]["numel"]:.3f} B).')
 
     print_log('Benchmark start.')
 
