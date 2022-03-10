@@ -1,7 +1,7 @@
 {
     "method": "colossalai",
     "model": {
-        "type": "gpt2_10b"
+        "type": "gpt2_small"
     },
     "hyperparameter": {
         "batch_size": 3,

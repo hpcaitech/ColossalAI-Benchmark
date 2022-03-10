@@ -96,6 +96,7 @@ def build_data():
     tokenized_dataset = dataset.map(partial(tokenize, mode=CONFIG['hyperparameter']['tokenize_mode']),
                                     batched=True,
                                     num_proc=16,
+				    keep_in_memory=True,
                                     load_from_cache_file=False,
                                     remove_columns='text')
 
