@@ -95,3 +95,16 @@ class ModelFromHF(torch.nn.Module):
     def forward(self, *args, **kwargs):
         output = self.module(*args, **kwargs)
         return output.logits
+
+
+def get_tflops(num_params_in_b: float, iter_time: float, batch_size: int, seq_len: int) -> float:
+    gflops = num_params_in_b * batch_size * seq_len * 2.0 * 4.0
+    return gflops / (iter_time * 1000.0)
+
+
+def get_model_size(model: torch.nn.Module, unit: str = 'B') -> float:
+    assert unit in ('B', 'M')
+    num_params = sum(p.numel() for p in model.parameters())
+    if unit == 'B':
+        return num_params / 1024**3
+    return num_params / 1024**2

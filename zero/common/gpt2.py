@@ -4,7 +4,7 @@ import torch
 from torch.distributed import get_world_size
 from transformers import GPT2Config, GPT2LMHeadModel, GPT2Tokenizer
 
-from common.utils import CONFIG, ModelFromHF
+from common.utils import CONFIG, ModelFromHF, get_model_size
 
 _gpt2_small = dict(
     seq_length=1024,
@@ -197,5 +197,6 @@ def gpt2_builder():
 
     CONFIG['dataset'] = os.environ['DATA']
     CONFIG['tokenizer'] = os.environ['TOKENIZER']
+    CONFIG['model']['numel'] = get_model_size(build_model())
 
     return build_data, build_model, build_loss, build_optimizer, build_scheduler
