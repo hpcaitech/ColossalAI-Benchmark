@@ -1,5 +1,8 @@
-def init_w_ds(builder, config):
+def init_w_ds(builder):
     import deepspeed
+    from common.utils import CONFIG
+
+    config = CONFIG
 
     deepspeed.init_distributed()
 
