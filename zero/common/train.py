@@ -32,6 +32,7 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
     num_steps = 0
     num_samples = torch.zeros(()).to(torch.int).to(rank)
     num_tokens = torch.zeros(()).to(torch.int).to(rank)
+    accum_tflops = torch.zeros(()).to(torch.float).to(rank)
 
     data_iter = iter(train_dataloader)
 
@@ -131,8 +132,10 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
         batch_time = fwd_time + bwd_time
         used_time += batch_time
 
+        tflops = get_tflops(CONFIG['model']['numel'], batch_time, batch_size, CONFIG['model']['seq_length'])
+        accum_tflops += tflops
+
         if rank == 0:
-            tflops = get_tflops(CONFIG['model']['numel'], batch_time, batch_size, CONFIG['model']['seq_length'])
             progress.set_postfix(loss=loss.item(),
                                  lr=lr_scheduler.get_last_lr()[0],
                                  time_forward=fwd_time,
@@ -147,10 +150,11 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
     all_reduce(train_loss)
     all_reduce(num_samples)
     all_reduce(num_tokens)
+    all_reduce(accum_tflops)
 
     msg = f'[Epoch {epoch} / Train]: Loss = {train_loss.item() / (world_size * num_steps):.3f}'
     msg += f' | Throughput = {num_samples.item() / (used_time + 1e-12):.3f} samples/sec'
-    msg += f" | TFLOPS = {get_tflops(CONFIG['model']['numel'], used_time, CONFIG['hyperparameter']['batch_size']*len(progress), CONFIG['model']['seq_length']):.3f}"
+    msg += f" | TFLOPS = {accum_tflops.item() / (world_size * num_steps):.3f}"
     if peak_mem is not None:
         msg += f' | Peak memory = {peak_mem / 1024:.3f} GB.'
     print_log(msg)
@@ -176,6 +180,7 @@ def _test(epoch, rank, world_size, test_dataloader, model, criterion, mem_monito
     num_samples = torch.zeros(()).to(torch.int).to(rank)
     num_tokens = torch.zeros(()).to(torch.int).to(rank)
     correct = torch.zeros(()).to(torch.int).to(rank)
+    accum_tflops = torch.zeros(()).to(torch.float).to(rank)
 
     data_iter = iter(test_dataloader)
 
@@ -223,11 +228,14 @@ def _test(epoch, rank, world_size, test_dataloader, model, criterion, mem_monito
             batch_time = batch_end - batch_start
             used_time += batch_time
 
+            tflops = get_tflops(CONFIG['model']['numel'], batch_time, batch_size, CONFIG['model']['seq_length'])
+            accum_tflops += tflops
+
             if rank == 0:
                 metrics = dict(loss=loss.item(),
                                step_time=batch_time,
                                throughput=batch_size * world_size / (batch_time + 1e-12),
-                               tflops=(numel * batch_tokens * world_size * 2.0 * 4.0 * 1e-12) / (batch_time + 1e-12))
+                               tflops=tflops)
                 if evaluation == 'ppl':
                     metrics['perplexity'] = math.exp(loss.item())
                 elif evaluation == 'acc':
@@ -248,6 +256,7 @@ def _test(epoch, rank, world_size, test_dataloader, model, criterion, mem_monito
     reduced_loss = test_loss.item() / (world_size * num_steps)
     all_reduce(num_samples)
     all_reduce(num_tokens)
+    all_reduce(accum_tflops)
     if evaluation == 'acc':
         all_reduce(correct)
 
@@ -257,7 +266,7 @@ def _test(epoch, rank, world_size, test_dataloader, model, criterion, mem_monito
     else:
         msg += f' | Accuracy = {correct.item() * 100 / num_samples.item():.3f} %'
     msg += f' | Throughput = {num_samples.item() / (used_time + 1e-12):.3f} samples/sec'
-    msg += f' | TFLOPS = {num_tokens.item() * numel * 2.0 * 4.0 * 1e-12 / (used_time + 1e-12):.3f}'
+    msg += f' | TFLOPS = {accum_tflops.item() / (world_size * num_steps):.3f}'
     if peak_mem is not None:
         msg += f' | Peak memory = {peak_mem / 1024:.3f} GB.'
     print_log(msg)
