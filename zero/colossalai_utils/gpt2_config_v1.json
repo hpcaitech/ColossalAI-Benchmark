@@ -1,7 +1,7 @@
 {
     "method": "colossalai",
     "model": {
-        "type": "gpt2_10b"
+        "type": "gpt2_small"
     },
     "hyperparameter": {
         "batch_size": 3,
@@ -16,13 +16,12 @@
     },
     "gradient_clipping": 0.0,
     "zero": {
-        "reduce_scatter_bucket_size_mb": 25,
-        "fp32_reduce_scatter": false,
-        "offload_config": {
+        "mixed_precision": true, 
+        "reshard_after_forward": false, 
+        "offload_config" : {
             "device": "cpu"
-        },
-        "shard_param": true
+        }
     },
     "use_mem_monitor": true,
-    "sharded_model_version": 2
+    "sharded_model_version": 1
 }

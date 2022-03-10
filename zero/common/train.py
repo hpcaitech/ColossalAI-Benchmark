@@ -18,6 +18,7 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
         'fp16' in CONFIG and CONFIG['fp16'].get('enabled', True)
     clip_grad_norm = CONFIG.get('gradient_clipping', 0.)
     use_integraded_clip_grad = CONFIG['method'] in ['fairscale']
+    use_colossalai_zero_v1 = CONFIG['method'] == 'colossalai' and CONFIG.get('sharded_model_version', 2) == 1
 
     model.train()
 
@@ -45,6 +46,9 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
         fwd_start = time.time()
 
         optimizer.zero_grad()
+
+        if use_colossalai_zero_v1:
+            model.zero_grad(set_to_none=True)
 
         batch = next(data_iter)
 
@@ -79,7 +83,11 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
 
         bwd_start = time.time()
 
-        if use_integrated_backward:  # deepspeed & patrickstar style
+        if use_colossalai_zero_v1:
+            loss.backward()
+            optimizer.step()
+            lr_scheduler.step()
+        elif use_integrated_backward:  # deepspeed & patrickstar style
             model.backward(loss)
             if use_integrated_step:
                 model.step()  # deepspeed style
