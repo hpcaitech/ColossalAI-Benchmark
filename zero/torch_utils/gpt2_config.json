@@ -1,6 +1,12 @@
 {
-    "method": "fairscale",
-    "mixed_precision": {
+    "method": "torch",
+    "model": {
+        "type": "gpt2_xl"
+    },
+    "hyperparameter": {
+        "batch_size": 4
+    },
+    "fp16": {
         "enabled": true,
         "init_scale": 32768,
         "growth_factor": 2.0,
@@ -8,11 +14,5 @@
         "growth_interval": 1000
     },
     "gradient_clipping": 1.0,
-    "fsdp": {
-        "mixed_precision": true,
-        "fp32_reduce_scatter": false,
-        "flatten_parameters": true,
-        "move_params_to_cpu": true
-    },
     "use_mem_monitor": true
 }

@@ -1,5 +1,11 @@
 {
     "method": "patrickstar",
+    "model": {
+        "type": "vit_h"
+    },
+    "hyperparameter": {
+        "batch_size": 4
+    },
     "optimizer": {
         "type": "AdamW",
         "params": {

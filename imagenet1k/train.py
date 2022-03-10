@@ -11,7 +11,7 @@ import torch
 from colossalai.builder import *
 from colossalai.context import ParallelMode
 from colossalai.core import global_context as gpc
-from colossalai.logging import get_dist_logger
+from colossalai.logging import disable_existing_loggers, get_dist_logger
 from colossalai.nn import Accuracy, CrossEntropyLoss
 from colossalai.nn.lr_scheduler import CosineAnnealingWarmupLR
 from colossalai.trainer import Trainer, hooks
@@ -30,6 +30,7 @@ VAL_IDX = DATASET_PATH + '/idx_files/validation/*'
 
 
 class DaliDataloader(DALIClassificationIterator):
+
     def __init__(self,
                  tfrec_filenames,
                  tfrec_idx_filenames,
@@ -137,17 +138,21 @@ def build_dali_test(batch_size):
 
 
 def train_imagenet():
-    args = colossalai.get_default_parser().parse_args()
-    # standard launch
-    colossalai.launch(config=args.config,
-                      rank=args.rank,
-                      world_size=args.world_size,
-                      local_rank=args.local_rank,
-                      host=args.host,
-                      port=args.port)
-
-    # launch from torchrun
-    # colossalai.launch_from_torch(config=args.config)
+    disable_existing_loggers()
+    parser = colossalai.get_default_parser()
+    parser.add_argument('--from_torch', default=False, action='store_true')
+    args = parser.parse_args()
+    if args.from_torch:
+        colossalai.launch_from_torch(config=args.config, seed=42)
+    else:
+        # standard launch
+        colossalai.launch(config=args.config,
+                          rank=args.rank,
+                          world_size=args.world_size,
+                          local_rank=args.local_rank,
+                          host=args.host,
+                          port=args.port,
+                          seed=42)
 
     logger = get_dist_logger()
     if hasattr(gpc.config, 'LOG_PATH'):

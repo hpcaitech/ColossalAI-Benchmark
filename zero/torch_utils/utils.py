@@ -3,9 +3,10 @@ import os
 import torch
 from torch.distributed import init_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
+from common.utils import CONFIG
 
 
-def init_w_torch(builder, config):
+def init_w_torch(builder):
     rank = int(os.environ['RANK'])
     world_size = int(os.environ['WORLD_SIZE'])
     host = os.environ['MASTER_ADDR']
@@ -25,7 +26,7 @@ def init_w_torch(builder, config):
 
     optimizer = build_optimizer(model.parameters())
 
-    scaler = torch.cuda.amp.GradScaler(**config['mixed_precision']) if 'mixed_precision' in config else None
+    scaler = torch.cuda.amp.GradScaler(**CONFIG['fp16']) if 'fp16' in CONFIG else None
 
     lr_scheduler = build_scheduler(len(train_data), optimizer)
 

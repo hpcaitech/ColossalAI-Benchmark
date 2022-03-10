@@ -1,12 +1,12 @@
-import json
 import os
-import sys
 
 from colossalai_utils.utils import init_w_col
+from common.gpt2 import gpt2_builder
+from common.train import train
+from common.utils import CONFIG, load_config, print_log
+from common.vit import vit_builder
 from deepspeed_utils.utils import init_w_ds
 from fairscale_utils.utils import init_w_fs
-from common.gpt import gpt_builder
-from common.train import train, _print_log
 from patrickstar_utils.utils import init_w_ps
 from torch_utils.utils import init_w_torch
 
@@ -18,29 +18,29 @@ _zero_method = {
     'deepspeed': init_w_ds
 }
 
+_builder = {
+    'gpt2': gpt2_builder,
+    'vit': vit_builder,
+}
 
-def run_zero(config):
-    method = config['method']
+
+def run_zero():
+    method = CONFIG['method']
     assert method in ['colossalai', 'deepspeed', 'fairscale', 'patrickstar', 'torch'], f'No support for {method}.'
 
-    train(*_zero_method[method](gpt_builder, config), config=config)
+    model = CONFIG['model']['type']
+    model_type = model.split('_')[0]
+    assert model_type in ['gpt2', 'vit'], f'No support for {model}.'
+
+    train(*_zero_method[method](_builder[model_type]))
 
 
 if __name__ == '__main__':
-    config_file = None
-    if sys.argv[1] == '--config':
-        config_file = sys.argv[2]
-        sys.argv = sys.argv[2:]
-    elif sys.argv[1].startswith('--config='):
-        config_file = sys.argv[1][8:]
-        sys.argv = sys.argv[1:]
-    else:
-        raise ValueError('No valid config file found.')
+    load_config()
 
-    assert os.path.exists(config_file), 'No valid config file found.'
-    with open(config_file, 'r') as f:
-        config = json.load(f)
+    CONFIG['log_path'] = os.environ.get('LOG', '.')
+    os.makedirs(CONFIG['log_path'], exist_ok=True)
 
-    _print_log(f'Initializing {config["method"]} ...')
+    print_log(f'Initializing {CONFIG["method"]} ...')
 
-    run_zero(config)
+    run_zero()

@@ -2,9 +2,10 @@ import os
 
 import torch
 from torch.distributed import init_process_group
+from common.utils import CONFIG
 
 
-def init_w_fs(builder, config):
+def init_w_fs(builder):
     from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
     from fairscale.optim.grad_scaler import ShardedGradScaler
 
@@ -20,15 +21,15 @@ def init_w_fs(builder, config):
 
     train_data, test_data = build_data()
 
-    assert 'fsdp' in config, 'No FSDP configuration provided.'
+    assert 'fsdp' in CONFIG
     model = build_model()
-    model = FSDP(model, **config['fsdp'])
+    model = FSDP(model, **CONFIG['fsdp'])
 
     criterion = build_loss()
 
     optimizer = build_optimizer(model.parameters())
 
-    scaler = ShardedGradScaler(**config['mixed_precision']) if 'mixed_precision' in config else None
+    scaler = ShardedGradScaler(**CONFIG['fp16']) if 'fp16' in CONFIG else None
 
     lr_scheduler = build_scheduler(len(train_data), optimizer)
 
