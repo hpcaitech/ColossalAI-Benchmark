@@ -97,14 +97,39 @@ class ModelFromHF(torch.nn.Module):
         return output.logits
 
 
-def get_tflops(num_params_in_b: float, iter_time: float, batch_size: int, seq_len: int) -> float:
-    gflops = num_params_in_b * batch_size * seq_len * 2.0 * 4.0
-    return gflops / (iter_time * 1000.0)
+def profile_model(model, train_data, warmup=1, ignore_modules=None):
+    from deepspeed.profiling.flops_profiler import FlopsProfiler
 
+    rank = get_rank()
 
-def get_model_size(model: torch.nn.Module, unit: str = 'B') -> float:
-    assert unit in ('B', 'M')
-    num_params = sum(p.numel() for p in model.parameters())
-    if unit == 'B':
-        return num_params / 1024**3
-    return num_params / 1024**2
+    prof = FlopsProfiler(model)
+
+    data_iter = iter(train_data)
+    batch_size = None
+
+    def prof_step():
+        model.eval()
+        batch_data = next(data_iter)
+        batch_data.pop('labels')
+        nonlocal batch_size
+        for k, v in batch_data.items():
+            batch_data[k] = v.to(rank)
+            if batch_size is None:
+                batch_size = v.size(0)
+
+        _ = model(**batch_data)
+
+    for _ in range(warmup):
+        prof_step()
+
+    prof.start_profile(ignore_list=ignore_modules)
+
+    prof_step()
+
+    flops = prof.get_total_flops()
+    macs = prof.get_total_macs()
+    params = prof.get_total_params()
+
+    prof.end_profile()
+
+    return batch_size, flops, macs, params
