@@ -1,13 +1,15 @@
 {
     "method": "deepspeed",
     "model": {
-        "type": "gpt2_xl"
+        "type": "gpt2_10b"
     },
     "hyperparameter": {
-        "batch_size": 4,
-        "steps_per_epoch": 20
+        "batch_size": 20,
+        "num_epochs": 2,
+        "steps_per_epoch": 10,
+        "synthetic": true
     },
-    "train_batch_size": 8,
+    "train_batch_size": 40,
     "steps_per_print": 2147483647,
     "zero_optimization": {
         "stage": 3,
@@ -39,7 +41,7 @@
     "fp16": {
         "enabled": true,
         "loss_scale": 0,
-        "initial_scale_power": 15,
+        "initial_scale_power": 5,
         "loss_scale_window": 1000,
         "hysteresis": 2,
         "min_loss_scale": 1

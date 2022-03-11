@@ -1,11 +1,12 @@
 {
     "method": "torch",
     "model": {
-        "type": "gpt2_xl"
+        "type": "gpt2_10b"
     },
     "hyperparameter": {
-        "batch_size": 4,
-        "steps_per_epoch": 20,
+        "batch_size": 1,
+        "num_epochs": 2,
+        "steps_per_epoch": 10,
         "synthetic": true
     },
     "fp16": {
