@@ -2,10 +2,13 @@ import os
 
 import torch
 from torch.distributed import init_process_group
+from common.utils import CONFIG
 
 
-def init_w_ps(builder, config):
+def init_w_ps(builder):
     from patrickstar.runtime import initialize_engine
+
+    config = CONFIG.copy()
 
     rank = int(os.environ['RANK'])
     world_size = int(os.environ['WORLD_SIZE'])

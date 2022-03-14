@@ -1,12 +1,13 @@
 {
     "method": "colossalai",
     "model": {
-        "type": "gpt2_10b",
-        "numel": 9.57
+        "type": "gpt2_10b"
     },
     "hyperparameter": {
-        "batch_size": 48,
-        "steps_per_epoch": 10
+        "batch_size": 20,
+        "num_epochs": 2,
+        "steps_per_epoch": 10,
+        "synthetic": true
     },
     "fp16": {
         "initial_scale": 32768,
@@ -22,8 +23,8 @@
         "offload_config": {
             "device": "cpu"
         },
-        "shard_param": true
+        "shard_param": true,
+        "version": 2
     },
-    "use_mem_monitor": true,
-    "sharded_model_version": 2
+    "use_mem_monitor": true
 }

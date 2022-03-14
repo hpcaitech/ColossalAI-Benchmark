@@ -1,10 +1,13 @@
 {
     "method": "patrickstar",
     "model": {
-        "type": "gpt2_xl"
+        "type": "gpt2_10b"
     },
     "hyperparameter": {
-        "batch_size": 4
+        "batch_size": 8,
+        "num_epochs": 2,
+        "steps_per_epoch": 10,
+        "synthetic": true
     },
     "optimizer": {
         "type": "AdamW",
@@ -22,7 +25,7 @@
         "hysteresis": 2,
         "min_loss_scale": 1
     },
-    "default_chunk_size": 67108864,
+    "default_chunk_size": 1073741824,
     "release_after_init": true,
     "gradient_clipping": 1.0,
     "use_cpu_embedding": false,

@@ -1,7 +1,6 @@
 import os
 
 import torch
-from colossalai.nn.optimizer import CPUAdam
 from torch.distributed import get_world_size
 from transformers import GPT2Config, GPT2LMHeadModel, GPT2Tokenizer
 
@@ -13,6 +12,7 @@ _gpt2_small = dict(
     hidden_size=768,
     num_heads=12,
     depth=12,
+    numel=124439808,
     checkpoint=False,
     evaluation='ppl',
 )
@@ -23,6 +23,7 @@ _gpt2_xl = dict(
     hidden_size=1600,
     num_heads=25,
     depth=48,
+    numel=1557611200,
     checkpoint=True,
     evaluation='ppl',
 )
@@ -33,6 +34,7 @@ _gpt2_10b = dict(
     hidden_size=4096,
     num_heads=16,
     depth=50,
+    numel=10279047168,
     checkpoint=True,
     evaluation='ppl',
 )
@@ -194,18 +196,18 @@ def build_loss():
 
 
 def build_optimizer(params):
-    optimizer = CPUAdam(params,
-                        lr=CONFIG['hyperparameter']['learning_rate'],
-                        weight_decay=CONFIG['hyperparameter']['weight_decay'])
+    optimizer = torch.optim.AdamW(params,
+                                  lr=CONFIG['hyperparameter']['learning_rate'],
+                                  weight_decay=CONFIG['hyperparameter']['weight_decay'])
     return optimizer
 
 
 def build_scheduler(epoch_steps, optimizer):
-    from transformers.optimization import get_cosine_schedule_with_warmup
+    from transformers.optimization import get_linear_schedule_with_warmup
 
     max_steps = epoch_steps * CONFIG['hyperparameter']['num_epochs']
     warmup_steps = epoch_steps * CONFIG['hyperparameter']['warmup_epochs']
-    lr_scheduler = get_cosine_schedule_with_warmup(optimizer,
+    lr_scheduler = get_linear_schedule_with_warmup(optimizer,
                                                    num_warmup_steps=warmup_steps,
                                                    num_training_steps=max_steps)
 
@@ -228,7 +230,7 @@ def gpt2_builder():
 
     CONFIG['dataset'] = os.environ['DATA']
     CONFIG['tokenizer'] = os.environ['TOKENIZER']
-    if CONFIG['model'].get('numel', None) is None:
+    if 'numel' not in CONFIG['model']:
         CONFIG['model']['numel'] = get_model_size(build_model())
 
     return build_data, build_model, build_loss, build_optimizer, build_scheduler
