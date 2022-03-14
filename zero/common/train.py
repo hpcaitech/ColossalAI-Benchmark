@@ -24,6 +24,7 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
     if 'steps_per_epoch' in CONFIG['hyperparameter'] and CONFIG['hyperparameter']['steps_per_epoch'] < num_steps:
         num_steps = CONFIG['hyperparameter']['steps_per_epoch']
     progress = range(num_steps)
+
     if rank == 0:
         progress = tqdm(progress, desc=f"[Epoch {epoch} / Train]")
 
