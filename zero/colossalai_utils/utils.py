@@ -18,7 +18,7 @@ def init_w_col(builder):
     disable_existing_loggers()
     colossalai.launch_from_torch(config=CONFIG)
 
-    build_data, build_model, build_loss, build_optimizer, build_scheduler = builder()
+    build_data, build_model, build_loss, optimizer_class, build_scheduler = builder()
 
     print_log('Building data')
     train_data, test_data = build_data()
@@ -32,11 +32,8 @@ def init_w_col(builder):
 
     print_log('Building model')
     if use_v2:
-        # shard_strategy = TensorShardStrategy()
         shard_strategy = BucketTensorShardStrategy()
         with ZeroInitContext(convert_fp16='fp16' in gpc.config,
-                             #  target_device=torch.device(
-                             #      gpc.config.zero.offload_config.device),
                              target_device=torch.cuda.current_device(),
                              shard_strategy=shard_strategy,
                              shard_param=True):
@@ -51,10 +48,9 @@ def init_w_col(builder):
     print_log(f'Peak Memory = {max_memory_allocated(rank) / (1024 * 1024)} M')
     reset_peak_memory_stats(rank)
 
-    optimizer_cls = build_optimizer
     optimizer_kwargs = {}
     if cpu_offload:
-        optimizer_cls = CPUAdam
+        optimizer_class = CPUAdam
         optimizer_kwargs = {
             'lr': CONFIG['hyperparameter']['learning_rate'],
             'weight_decay': CONFIG['hyperparameter']['weight_decay']
@@ -62,11 +58,11 @@ def init_w_col(builder):
 
     if use_v2:
         optimizer = ShardedOptimizerV2(model,
-                                       optimizer_cls,
+                                       optimizer_class,
                                        **gpc.config.get('fp16', dict()),
                                        cpu_offload=cpu_offload, **optimizer_kwargs)
     else:
-        optimizer = optimizer_cls(model.parameters())
+        optimizer = optimizer_class(model.parameters())
 
     lr_scheduler = build_scheduler(len(train_data), optimizer)
     print_log(f'Peak Memory = {max_memory_allocated(rank) / (1024 * 1024)} M')
