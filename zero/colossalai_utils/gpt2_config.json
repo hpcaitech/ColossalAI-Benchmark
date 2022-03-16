@@ -5,9 +5,7 @@
     },
     "hyperparameter": {
         "batch_size": 20,
-        "num_epochs": 2,
-        "steps_per_epoch": 10,
-        "synthetic": true
+        "steps_per_epoch": 10
     },
     "fp16": {
         "initial_scale": 32768,
