@@ -1,12 +1,10 @@
 import sys
-sys.path.append('../zero/')
-
 import os
 
-from src.bert import bert_builder
-from common.train import train
-from common.utils import CONFIG, load_config, print_log
-from torch_utils.utils import init_w_torch
+from zero.common.train import train
+from zero.common.utils import CONFIG, load_config, print_log
+from zero.torch_utils.utils import init_w_torch
+from bert.src.bert import bert_builder
 
 _method = {
     'torch': init_w_torch,

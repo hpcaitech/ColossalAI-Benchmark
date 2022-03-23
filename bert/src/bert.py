@@ -1,13 +1,14 @@
 import sys
-sys.path.append('../zero/')
-
 import os
+
+from transformers import BertConfig, BertForMaskedLM, BertTokenizer
 
 import torch
 from torch.distributed import get_world_size
-from transformers import BertConfig, BertForMaskedLM, BertTokenizer
 
-from common.utils import CONFIG, ModelFromHF, get_model_size
+from zero.common.utils import CONFIG, ModelFromHF, get_model_size
+
+
 
 _bert_small = dict(
     seq_length=1024,
