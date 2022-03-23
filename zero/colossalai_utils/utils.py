@@ -1,5 +1,5 @@
 import torch
-from common.utils import CONFIG, get_model_size, print_log
+from common.utils import CONFIG, get_gpu_memory_mb, get_model_size, print_log
 from torch.cuda import max_memory_allocated, reset_peak_memory_stats
 from torch.distributed import get_rank
 
@@ -17,6 +17,10 @@ def init_w_col(builder):
 
     disable_existing_loggers()
     colossalai.launch_from_torch(config=CONFIG)
+
+    if CONFIG.get('gpu_mem_fraction', None) is not None:
+        torch.cuda.set_per_process_memory_fraction(CONFIG['gpu_mem_fraction'])
+        print_log(f'Set max GPU mem: {get_gpu_memory_mb() * CONFIG["gpu_mem_fraction"]:.2f} MB')
 
     build_data, build_model, build_loss, optimizer_class, build_scheduler = builder()
 

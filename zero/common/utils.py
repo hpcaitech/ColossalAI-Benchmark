@@ -105,3 +105,7 @@ def get_tflops(iter_time: float, num_tokens: int) -> float:
 
 def get_model_size(model: torch.nn.Module):
     return sum(p.numel() for p in model.parameters())
+
+
+def get_gpu_memory_mb():
+    return torch.cuda.get_device_properties(torch.cuda.current_device()).total_memory / 1024**2
