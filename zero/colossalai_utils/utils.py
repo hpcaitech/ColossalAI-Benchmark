@@ -1,30 +1,70 @@
-def init_w_col(builder, config):
-    import colossalai
-    from colossalai.amp import AMP_TYPE
-    from colossalai.logging import disable_existing_loggers
-    from fairscale.optim.grad_scaler import ShardedGradScaler
+import torch
+from common.utils import CONFIG, print_log
+from torch.cuda import max_memory_allocated, reset_peak_memory_stats
+from torch.distributed import get_rank
 
-    col_amp = {'apex': AMP_TYPE.APEX, 'naive': AMP_TYPE.NAIVE, 'torch': AMP_TYPE.TORCH}
-    if 'fp16' in config:
-        config['fp16']['mode'] = col_amp[config['fp16']['mode']]
+
+def init_w_col(builder):
+    import colossalai
+    from colossalai.core import global_context as gpc
+    from colossalai.logging import disable_existing_loggers
+    from colossalai.nn.optimizer import CPUAdam
+    from colossalai.zero.init_ctx import ZeroInitContext
+    from colossalai.zero.shard_utils import (BucketTensorShardStrategy,
+                                             TensorShardStrategy)
+    from colossalai.zero.sharded_model import ShardedModel, ShardedModelV2
+    from colossalai.zero.sharded_optim import ShardedOptimizerV2
 
     disable_existing_loggers()
-    colossalai.launch_from_torch(config=config)
+    colossalai.launch_from_torch(config=CONFIG)
 
-    build_data, build_model, build_loss, build_optimizer, build_scheduler = builder()
+    build_data, build_model, build_loss, optimizer_class, build_scheduler = builder()
 
+    print_log('Building data')
     train_data, test_data = build_data()
 
-    model = build_model()
+    use_v2 = gpc.config.zero.pop('version', 2) == 2
+
+    cpu_offload = gpc.config.zero.offload_config.device == 'cpu'
+
+    rank = get_rank()
+    reset_peak_memory_stats(rank)
+
+    print_log('Building model')
+    if use_v2:
+        shard_strategy = BucketTensorShardStrategy()
+        with ZeroInitContext(convert_fp16='fp16' in gpc.config,
+                             target_device=torch.cuda.current_device(),
+                             shard_strategy=shard_strategy,
+                             shard_param=True):
+            model = build_model()
+        model = ShardedModelV2(model, shard_strategy, **gpc.config.zero)
+    else:
+        model = build_model()
+        model = ShardedModel(model, **gpc.config.zero)
 
     criterion = build_loss()
 
-    optimizer = build_optimizer(model.parameters())
+    print_log(f'Peak Memory = {max_memory_allocated(rank) / (1024 * 1024)} M')
+    reset_peak_memory_stats(rank)
+
+    optimizer_kwargs = {}
+    if cpu_offload:
+        optimizer_class = CPUAdam
+        optimizer_kwargs = {
+            'lr': CONFIG['hyperparameter']['learning_rate'],
+            'weight_decay': CONFIG['hyperparameter']['weight_decay']
+        }
+
+    if use_v2:
+        optimizer = ShardedOptimizerV2(model,
+                                       optimizer_class,
+                                       **gpc.config.get('fp16', dict()),
+                                       cpu_offload=cpu_offload, **optimizer_kwargs)
+    else:
+        optimizer = optimizer_class(model.parameters())
 
     lr_scheduler = build_scheduler(len(train_data), optimizer)
+    print_log(f'Peak Memory = {max_memory_allocated(rank) / (1024 * 1024)} M')
 
-    scaler = ShardedGradScaler(**config['mixed_precision']) if 'mixed_precision' in config else None
-
-    engine, _, _, lr_scheduler = colossalai.initialize(model, optimizer, criterion, lr_scheduler=lr_scheduler)
-
-    return engine, train_data, test_data, engine.criterion, engine.optimizer, scaler, lr_scheduler
+    return model, train_data, test_data, criterion, optimizer, None, lr_scheduler
