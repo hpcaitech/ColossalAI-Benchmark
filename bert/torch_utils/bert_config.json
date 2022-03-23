@@ -1,0 +1,20 @@
+{
+    "method": "torch",
+    "model": {
+        "type": "bert_small"
+    },
+    "hyperparameter": {
+        "batch_size": 1,
+        "num_epochs": 10,
+        "steps_per_epoch": 10
+    },
+    "fp16": {
+        "enabled": true,
+        "init_scale": 32768,
+        "growth_factor": 2.0,
+        "backoff_factor": 0.5,
+        "growth_interval": 1000
+    },
+    "gradient_clipping": 1.0,
+    "use_mem_monitor": true
+}
