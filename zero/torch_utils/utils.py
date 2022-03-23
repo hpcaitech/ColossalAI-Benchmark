@@ -1,9 +1,9 @@
 import os
 
 import torch
+from common.utils import CONFIG, get_model_size
 from torch.distributed import init_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
-from common.utils import CONFIG
 
 
 def init_w_torch(builder):
@@ -20,6 +20,8 @@ def init_w_torch(builder):
     train_data, test_data = build_data()
 
     model = build_model().to(rank)
+    if 'numel' not in CONFIG['model']:
+        CONFIG['model']['numel'] = get_model_size(model)
     model = DDP(model)
 
     criterion = build_loss()

@@ -1,5 +1,5 @@
 import torch
-from common.utils import CONFIG, print_log
+from common.utils import CONFIG, get_model_size, print_log
 from torch.cuda import max_memory_allocated, reset_peak_memory_stats
 from torch.distributed import get_rank
 
@@ -33,14 +33,21 @@ def init_w_col(builder):
     print_log('Building model')
     if use_v2:
         shard_strategy = BucketTensorShardStrategy()
+        model_numel = torch.zeros(1, dtype=torch.long)
         with ZeroInitContext(convert_fp16='fp16' in gpc.config,
                              target_device=torch.cuda.current_device(),
                              shard_strategy=shard_strategy,
-                             shard_param=True):
+                             shard_param=True,
+                             model_numel_tensor=model_numel):
             model = build_model()
         model = ShardedModelV2(model, shard_strategy, **gpc.config.zero)
+        if 'numel' not in CONFIG['model']:
+            CONFIG['model']['numel'] = model_numel.item()
+        print_log(f'model numel: {model_numel.item()}')
     else:
         model = build_model()
+        if 'numel' not in CONFIG['model']:
+            CONFIG['model']['numel'] = get_model_size(model)
         model = ShardedModel(model, **gpc.config.zero)
 
     criterion = build_loss()
@@ -57,10 +64,11 @@ def init_w_col(builder):
         }
 
     if use_v2:
+        optimizer = optimizer_class(model.parameters(), **optimizer_kwargs)
         optimizer = ShardedOptimizerV2(model,
-                                       optimizer_class,
+                                       optimizer,
                                        **gpc.config.get('fp16', dict()),
-                                       cpu_offload=cpu_offload, **optimizer_kwargs)
+                                       cpu_offload=cpu_offload)
     else:
         optimizer = optimizer_class(model.parameters())
 

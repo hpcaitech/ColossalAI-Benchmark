@@ -35,7 +35,8 @@ class AsyncMemoryMonitor:
         at interval of 1/(10**power) sec.
         """
         self.keep_measuring = False
-        self.executor = ThreadPoolExecutor(max_workers=1)
+        device = torch.cuda.current_device()
+        self.executor = ThreadPoolExecutor(max_workers=1, initializer=lambda: torch.cuda.set_device(device))
         self.monitor_thread = None
         self.interval = 1 / (10**power)
         self.rank = rank

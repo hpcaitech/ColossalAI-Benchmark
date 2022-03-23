@@ -13,7 +13,7 @@ _gpt2_small = dict(
     num_heads=12,
     depth=12,
     numel=124439808,
-    checkpoint=False,
+    checkpoint=True,
     evaluation='ppl',
 )
 
@@ -39,11 +39,121 @@ _gpt2_10b = dict(
     evaluation='ppl',
 )
 
+_gpt2_4b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=2304,
+    num_heads=16,
+    depth=64,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
+_gpt2_2b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=2048,
+    num_heads=16,
+    depth=40,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
+_gpt2_3b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=2560,
+    num_heads=40,
+    depth=24,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
+_gpt2_6b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=4096,
+    num_heads=16,
+    depth=30,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
+_gpt2_8b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=4096,
+    num_heads=16,
+    depth=40,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
+_gpt2_12b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=4096,
+    num_heads=16,
+    depth=60,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
+_gpt2_15b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=4096,
+    num_heads=16,
+    depth=78,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
+_gpt2_18b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=4096,
+    num_heads=16,
+    depth=90,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
+_gpt2_20b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=8192,
+    num_heads=16,
+    depth=25,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
+_gpt2_40b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=8192,
+    num_heads=16,
+    depth=50,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
 _gpt2_configurations = dict(
     gpt2=_gpt2_small,
     gpt2_small=_gpt2_small,
     gpt2_xl=_gpt2_xl,
     gpt2_10b=_gpt2_10b,
+    gpt2_4b=_gpt2_4b,
+    gpt2_6b=_gpt2_6b,
+    gpt2_8b=_gpt2_8b,
+    gpt2_2b=_gpt2_2b,
+    gpt2_3b=_gpt2_3b,
+    gpt2_12b=_gpt2_12b,
+    gpt2_15b=_gpt2_15b,
+    gpt2_18b=_gpt2_18b,
+    gpt2_20b=_gpt2_20b,
+    gpt2_40b=_gpt2_40b
 )
 
 _default_hyperparameters = dict(
@@ -230,7 +340,5 @@ def gpt2_builder():
 
     CONFIG['dataset'] = os.environ['DATA']
     CONFIG['tokenizer'] = os.environ['TOKENIZER']
-    if 'numel' not in CONFIG['model']:
-        CONFIG['model']['numel'] = get_model_size(build_model())
 
     return build_data, build_model, build_loss, build_optimizer, build_scheduler
