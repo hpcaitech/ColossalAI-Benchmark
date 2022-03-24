@@ -7,15 +7,14 @@ from torch.distributed import get_rank
 def init_w_col(builder):
     import colossalai
     from colossalai.core import global_context as gpc
-    from colossalai.logging import disable_existing_loggers
+    #from colossalai.logging import disable_existing_loggers
     from colossalai.nn.optimizer import CPUAdam
     from colossalai.zero.init_ctx import ZeroInitContext
-    from colossalai.zero.shard_utils import (
+    from colossalai.zero.shard_utils import (BucketTensorShardStrategy,
                                              TensorShardStrategy)
     from colossalai.zero.sharded_model import ShardedModel, ShardedModelV2
     from colossalai.zero.sharded_optim import ShardedOptimizerV2
 
-    disable_existing_loggers()
     colossalai.launch_from_torch(config=CONFIG)
 
     build_data, build_model, build_loss, optimizer_class, build_scheduler = builder()
@@ -32,7 +31,7 @@ def init_w_col(builder):
 
     print_log('Building model')
     if use_v2:
-        shard_strategy = TensorShardStrategy()
+        shard_strategy = BucketTensorShardStrategy()
         with ZeroInitContext(convert_fp16='fp16' in gpc.config,
                              target_device=torch.cuda.current_device(),
                              shard_strategy=shard_strategy,
@@ -49,18 +48,19 @@ def init_w_col(builder):
     reset_peak_memory_stats(rank)
 
     optimizer_kwargs = {}
-    #if cpu_offload:
-        #optimizer_class = CPUAdam
-        #optimizer_kwargs = {
-        #    'lr': CONFIG['hyperparameter']['learning_rate'],
-        #    'weight_decay': CONFIG['hyperparameter']['weight_decay']
-        #}
+    if cpu_offload:
+        optimizer_class = CPUAdam
+        optimizer_kwargs = {
+            'lr': CONFIG['hyperparameter']['learning_rate'],
+            'weight_decay': CONFIG['hyperparameter']['weight_decay']
+        }
 
     if use_v2:
+        optimizer = optimizer_class(model.parameters(), **optimizer_kwargs)
         optimizer = ShardedOptimizerV2(model,
-                                       optimizer_class,
+                                       optimizer,
                                        **gpc.config.get('fp16', dict()),
-                                       cpu_offload=cpu_offload, **optimizer_kwargs)
+                                       cpu_offload=cpu_offload)
     else:
         optimizer = optimizer_class(model.parameters())
 

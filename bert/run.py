@@ -4,7 +4,7 @@ from bert.common.bert import bert_builder
 from bert.colossalai_utils.utils import init_w_col
 from zero.common.train import train
 from zero.common.utils import CONFIG, load_config, print_log
-from torch_utils.utils import init_w_torch
+from zero.torch_utils.utils import init_w_torch
 
 _method = {
     'torch': init_w_torch,

@@ -1,6 +1,3 @@
-import sys
-sys.path.append('../zero/')
-
 import os
 
 import torch
