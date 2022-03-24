@@ -4,8 +4,8 @@
         "type": "bert_small"
     },
     "hyperparameter": {
-        "batch_size": 1,
-        "num_epochs": 10,
+        "batch_size": 8,
+        "num_epochs": 300,
         "steps_per_epoch": 10
     },
     "fp16": {
