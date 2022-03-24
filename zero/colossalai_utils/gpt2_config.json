@@ -4,8 +4,8 @@
         "type": "gpt2_10b"
     },
     "hyperparameter": {
-        "batch_size": 20,
-        "steps_per_epoch": 10
+        "batch_size": 1,
+        "steps_per_epoch": 3
     },
     "fp16": {
         "initial_scale": 32768,
@@ -21,7 +21,7 @@
         "offload_config": {
             "device": "cpu"
         },
-        "shard_param": true,
+        "reuse_fp16_shard": true,
         "version": 2
     },
     "use_mem_monitor": true

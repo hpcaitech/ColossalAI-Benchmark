@@ -1,4 +1,5 @@
-from common.utils import CONFIG
+import torch
+from common.utils import CONFIG, get_gpu_memory_mb, print_log
 
 
 def init_w_ds(builder):
@@ -7,6 +8,10 @@ def init_w_ds(builder):
     config = CONFIG.copy()
 
     deepspeed.init_distributed()
+
+    if CONFIG.get('gpu_mem_fraction', None) is not None:
+        torch.cuda.set_per_process_memory_fraction(CONFIG['gpu_mem_fraction'])
+        print_log(f'Set max GPU mem: {get_gpu_memory_mb() * CONFIG["gpu_mem_fraction"]:.2f} MB')
 
     build_data, build_model, build_loss, build_optimizer, build_scheduler = builder()
 
