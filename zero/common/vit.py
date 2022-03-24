@@ -4,7 +4,7 @@ import torch
 from torch.distributed import get_rank, get_world_size
 from transformers import ViTConfig, ViTForImageClassification
 
-from common.utils import CONFIG, ModelFromHF
+from zero.common.utils import CONFIG, ModelFromHF
 
 _vit_b = dict(
     img_size=224,

@@ -1,7 +1,7 @@
 import os
 
 import torch
-from common.utils import CONFIG, get_gpu_memory_mb, get_model_size, print_log
+from zero.common.utils import CONFIG, get_gpu_memory_mb, get_model_size, print_log
 from torch.distributed import init_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
 

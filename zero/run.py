@@ -1,14 +1,14 @@
 import os
 
-from colossalai_utils.utils import init_w_col
-from common.gpt2 import gpt2_builder
-from common.train import train
-from common.utils import CONFIG, load_config, print_log
-from common.vit import vit_builder
-from deepspeed_utils.utils import init_w_ds
-from fairscale_utils.utils import init_w_fs
-from patrickstar_utils.utils import init_w_ps
-from torch_utils.utils import init_w_torch
+from zero.colossalai_utils.utils import init_w_col
+from zero.common.gpt2 import gpt2_builder
+from zero.common.train import train
+from zero.common.utils import CONFIG, load_config, print_log
+from zero.common.vit import vit_builder
+from zero.deepspeed_utils.utils import init_w_ds
+from zero.fairscale_utils.utils import init_w_fs
+from zero.patrickstar_utils.utils import init_w_ps
+from zero.torch_utils.utils import init_w_torch
 
 _zero_method = {
     'fairscale': init_w_fs,

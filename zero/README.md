@@ -25,6 +25,10 @@ https://github.com/Tencent/PatrickStar.git
 cd PatrickStar
 pip install .
 ```
+4. Add root dir into PYTHONPATH
+```
+export PYTHONPATH=$(dirname "$PWD"):$PYTHONPATH
+```
 
 ## GPT Usage
 

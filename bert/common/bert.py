@@ -1,16 +1,13 @@
-import sys
-sys.path.append('../zero/')
-
 import os
 
 import torch
 from torch.distributed import get_world_size
 from transformers import BertConfig, BertForMaskedLM, BertTokenizer
 
-from common.utils import CONFIG, ModelFromHF, get_model_size
+from zero.common.utils import CONFIG, ModelFromHF, get_model_size
 
 _bert_small = dict(
-    seq_length=1024,
+    seq_length=512,
     vocab_size=50257,
     hidden_size=768,
     num_heads=12,
@@ -27,8 +24,8 @@ _bert_configurations = dict(
 
 _default_hyperparameters = dict(
     tokenize_mode='concat',
-    batch_size=4,
-    learning_rate=0.00015,
+    batch_size=8,
+    learning_rate=5e-5,
     weight_decay=1e-2,
     num_epochs=2,
     warmup_epochs=1,

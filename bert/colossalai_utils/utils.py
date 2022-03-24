@@ -1,5 +1,5 @@
 import torch
-from zero.common.utils import CONFIG, get_gpu_memory_mb, get_model_size, print_log
+from zero.common.utils import CONFIG, print_log
 from torch.cuda import max_memory_allocated, reset_peak_memory_stats
 from torch.distributed import get_rank
 
@@ -7,7 +7,7 @@ from torch.distributed import get_rank
 def init_w_col(builder):
     import colossalai
     from colossalai.core import global_context as gpc
-    from colossalai.logging import disable_existing_loggers
+    #from colossalai.logging import disable_existing_loggers
     from colossalai.nn.optimizer import CPUAdam
     from colossalai.zero.init_ctx import ZeroInitContext
     from colossalai.zero.shard_utils import (BucketTensorShardStrategy,
@@ -15,12 +15,7 @@ def init_w_col(builder):
     from colossalai.zero.sharded_model import ShardedModel, ShardedModelV2
     from colossalai.zero.sharded_optim import ShardedOptimizerV2
 
-    disable_existing_loggers()
     colossalai.launch_from_torch(config=CONFIG)
-
-    if CONFIG.get('gpu_mem_fraction', None) is not None:
-        torch.cuda.set_per_process_memory_fraction(CONFIG['gpu_mem_fraction'])
-        print_log(f'Set max GPU mem: {get_gpu_memory_mb() * CONFIG["gpu_mem_fraction"]:.2f} MB')
 
     build_data, build_model, build_loss, optimizer_class, build_scheduler = builder()
 
@@ -37,21 +32,14 @@ def init_w_col(builder):
     print_log('Building model')
     if use_v2:
         shard_strategy = BucketTensorShardStrategy()
-        model_numel = torch.zeros(1, dtype=torch.long)
         with ZeroInitContext(convert_fp16='fp16' in gpc.config,
                              target_device=torch.cuda.current_device(),
                              shard_strategy=shard_strategy,
-                             shard_param=True,
-                             model_numel_tensor=model_numel):
+                             shard_param=True):
             model = build_model()
         model = ShardedModelV2(model, shard_strategy, **gpc.config.zero)
-        if 'numel' not in CONFIG['model']:
-            CONFIG['model']['numel'] = model_numel.item()
-        print_log(f'model numel: {model_numel.item()}')
     else:
         model = build_model()
-        if 'numel' not in CONFIG['model']:
-            CONFIG['model']['numel'] = get_model_size(model)
         model = ShardedModel(model, **gpc.config.zero)
 
     criterion = build_loss()
