@@ -1,5 +1,5 @@
 import torch
-from common.utils import CONFIG, get_gpu_memory_mb, get_model_size, print_log
+from zero.common.utils import CONFIG, get_gpu_memory_mb, get_model_size, print_log
 from torch.cuda import max_memory_allocated, reset_peak_memory_stats
 from torch.distributed import get_rank
 

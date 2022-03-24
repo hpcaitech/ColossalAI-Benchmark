@@ -1,5 +1,5 @@
 import torch
-from common.utils import CONFIG, get_gpu_memory_mb, print_log
+from zero.common.utils import CONFIG, get_gpu_memory_mb, print_log
 
 
 def init_w_ds(builder):
