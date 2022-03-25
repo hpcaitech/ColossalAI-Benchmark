@@ -23,7 +23,10 @@ def init_w_col(builder):
     train_data, test_data = build_data()
 
     use_zero = "zero" in gpc.config
-    use_v2 = gpc.config.zero.pop('version', 2) == 2
+    if use_zero:
+        use_v2 = gpc.config.zero.pop('version', 2) == 2
+    else:
+        use_v2 = False
 
     cpu_offload = gpc.config.zero.offload_config.device == 'cpu'
 
