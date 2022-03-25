@@ -123,6 +123,8 @@ def build_model():
 
     return model
 
+def Empty_loss():
+
 def build_loss():
     return BertMaskedLMLoss(CONFIG['model']['vocab_size'])
 
