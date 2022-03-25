@@ -14,7 +14,7 @@
         "pipeline": 1,
         "tensor": {
             "mode": "1d",
-            "size": 4
+            "size": 2
         }
     },
     "use_mem_monitor": true
