@@ -3,7 +3,6 @@ from zero.common.utils import CONFIG, print_log
 from torch.cuda import max_memory_allocated, reset_peak_memory_stats
 from torch.distributed import get_rank
 
-
 def init_w_col(builder):
     import colossalai
     from colossalai.core import global_context as gpc
@@ -74,4 +73,13 @@ def init_w_col(builder):
     lr_scheduler = build_scheduler(len(train_data), optimizer)
     print_log(f'Peak Memory = {max_memory_allocated(rank) / (1024 * 1024)} M')
 
-    return model, train_data, test_data, criterion, optimizer, None, lr_scheduler
+    if not use_zero:
+        engine, train_data, test_data, _ = colossalai.initialize(model, 
+                                                                        optimizer, 
+                                                                        criterion, 
+                                                                        train_data, 
+                                                                        test_data)
+        model = engine
+        criterion = engine.criterion
+
+    return model, train_data, test_data, criterion, engine, None, lr_scheduler

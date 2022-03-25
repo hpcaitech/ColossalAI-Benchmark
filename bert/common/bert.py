@@ -135,10 +135,14 @@ def build_optimizer(params):
 
 def build_scheduler(epoch_steps, optimizer):
     from transformers.optimization import get_linear_schedule_with_warmup
+    from colossalai.nn.lr_scheduler import LinearWarmupLR
 
     max_steps = epoch_steps * CONFIG['hyperparameter']['num_epochs']
     warmup_steps = epoch_steps * CONFIG['hyperparameter']['warmup_epochs']
-    lr_scheduler = get_linear_schedule_with_warmup(optimizer,
+    #lr_scheduler = get_linear_schedule_with_warmup(optimizer,
+    #                                               num_warmup_steps=warmup_steps,
+    #                                               num_training_steps=max_steps)
+    lr_scheduler = LinearWarmupLR(optimizer,
                                                    num_warmup_steps=warmup_steps,
                                                    num_training_steps=max_steps)
 
