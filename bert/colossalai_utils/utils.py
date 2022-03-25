@@ -22,6 +22,7 @@ def init_w_col(builder):
     print_log('Building data')
     train_data, test_data = build_data()
 
+    use_zero = "zero" in gpc.config
     use_v2 = gpc.config.zero.pop('version', 2) == 2
 
     cpu_offload = gpc.config.zero.offload_config.device == 'cpu'
@@ -30,17 +31,20 @@ def init_w_col(builder):
     reset_peak_memory_stats(rank)
 
     print_log('Building model')
-    if use_v2:
-        shard_strategy = BucketTensorShardStrategy()
-        with ZeroInitContext(convert_fp16='fp16' in gpc.config,
-                             target_device=torch.cuda.current_device(),
-                             shard_strategy=shard_strategy,
-                             shard_param=True):
+    if use_zero:
+        if use_v2:
+            shard_strategy = BucketTensorShardStrategy()
+            with ZeroInitContext(convert_fp16='fp16' in gpc.config,
+                                target_device=torch.cuda.current_device(),
+                                shard_strategy=shard_strategy,
+                                shard_param=True):
+                model = build_model()
+            model = ShardedModelV2(model, shard_strategy, **gpc.config.zero)
+        else:
             model = build_model()
-        model = ShardedModelV2(model, shard_strategy, **gpc.config.zero)
+            model = ShardedModel(model, **gpc.config.zero)
     else:
         model = build_model()
-        model = ShardedModel(model, **gpc.config.zero)
 
     criterion = build_loss()
 
@@ -48,14 +52,14 @@ def init_w_col(builder):
     reset_peak_memory_stats(rank)
 
     optimizer_kwargs = {}
-    if cpu_offload:
+    if use_zero and cpu_offload:
         optimizer_class = CPUAdam
         optimizer_kwargs = {
             'lr': CONFIG['hyperparameter']['learning_rate'],
             'weight_decay': CONFIG['hyperparameter']['weight_decay']
         }
 
-    if use_v2:
+    if use_zero and use_v2:
         optimizer = optimizer_class(model.parameters(), **optimizer_kwargs)
         optimizer = ShardedOptimizerV2(model,
                                        optimizer,
