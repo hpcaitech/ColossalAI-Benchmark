@@ -25,10 +25,10 @@ def init_w_col(builder):
     use_zero = "zero" in gpc.config
     if use_zero:
         use_v2 = gpc.config.zero.pop('version', 2) == 2
+        cpu_offload = gpc.config.zero.offload_config.device == 'cpu'
     else:
         use_v2 = False
-
-    cpu_offload = gpc.config.zero.offload_config.device == 'cpu'
+        cpu_offload = None
 
     rank = get_rank()
     reset_peak_memory_stats(rank)
