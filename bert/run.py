@@ -2,7 +2,7 @@ import os
 
 from bert.common.bert import bert_builder
 from bert.colossalai_utils.utils import init_w_col
-from zero.common.train import train
+from bert.common.train import train
 from zero.common.utils import CONFIG, load_config, print_log
 from zero.torch_utils.utils import init_w_torch
 

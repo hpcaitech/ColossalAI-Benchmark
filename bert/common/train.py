@@ -5,7 +5,7 @@ import torch
 from torch.distributed import all_reduce, get_rank, get_world_size
 from tqdm import tqdm
 
-from bert.common.utils import CONFIG, AsyncMemoryMonitor, print_log, get_tflops
+from zero.common.utils import CONFIG, AsyncMemoryMonitor, print_log, get_tflops
 
 
 def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimizer, lr_scheduler, scaler, mem_monitor):
