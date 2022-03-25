@@ -94,8 +94,6 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
 
         elif use_optimizer_backward:  # colossalai style
             optimizer.backward(loss)
-            if clip_grad_norm > 0:
-                optimizer.clip_grad_norm(model, clip_grad_norm)
             optimizer.step()
             lr_scheduler.step()
 
