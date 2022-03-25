@@ -9,7 +9,7 @@ from transformers import (PreTrainedModel, BertConfig, load_tf_weights_in_bert,
                          )
 from transformers.modeling_utils import find_pruneable_heads_and_indices
 from transformers.activations import ACT2FN
-from transformers.modeling_outputs import (MaskedLMOutput, 
+from transformers.modeling_outputs import (MaskedLMOutput,
                                            BaseModelOutputWithPoolingAndCrossAttentions,
                                            BaseModelOutputWithPastAndCrossAttentions
                                           )
@@ -17,7 +17,7 @@ from torch import nn
 from torch.nn import CrossEntropyLoss
 from packaging import version
 
-from colossalai import nn as col_nn
+#from colossalai import nn as col_nn
 
 def prune_linear_layer(layer: nn.Linear, index: torch.LongTensor, dim: int = 0) -> nn.Linear:
     """
@@ -856,4 +856,4 @@ Bert = BertForMaskedLM
 
 def _create_bert_model(**model_kwargs):
     model = Bert(**model_kwargs)
-    return 
+    return
