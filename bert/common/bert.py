@@ -143,8 +143,8 @@ def build_scheduler(epoch_steps, optimizer):
     #                                               num_warmup_steps=warmup_steps,
     #                                               num_training_steps=max_steps)
     lr_scheduler = LinearWarmupLR(optimizer,
-                                                   num_warmup_steps=warmup_steps,
-                                                   num_training_steps=max_steps)
+                                  total_steps=max_steps,
+                                  warmup_steps=warmup_steps)
 
     return lr_scheduler
 
