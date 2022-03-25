@@ -2,9 +2,10 @@ import os
 
 import torch
 from torch.distributed import get_world_size
-from transformers import BertConfig, BertForMaskedLM, BertTokenizer
+from transformers import BertConfig, BertTokenizer
 
 from zero.common.utils import CONFIG, ModelFromHF, get_model_size
+from bert.colossalai_utils.model_zoo.bert import BertMaskedLMLoss, BertForMaskedLM
 
 _bert_small = dict(
     seq_length=512,
@@ -122,21 +123,8 @@ def build_model():
 
     return model
 
-
-class BertMaskedLMLoss(torch.nn.Module):
-
-    def __init__(self, vocab_size):
-        super().__init__()
-        self.vocab_size = vocab_size
-        self.loss = torch.nn.CrossEntropyLoss()
-
-    def forward(self, logits, labels):
-        return self.loss(logits.view(-1, self.vocab_size), labels.view(-1))
-
-
 def build_loss():
     return BertMaskedLMLoss(CONFIG['model']['vocab_size'])
-
 
 def build_optimizer(params):
     optimizer = torch.optim.AdamW(params,
