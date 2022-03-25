@@ -4,11 +4,11 @@ Adapted from huggingface modeling_bert.py. Change the necessary part to use Colo
 import torch
 import math
 
-from transformers import PreTrainedModel, BertConfig, load_tf_weights_in_bert
-from transformers.modeling_utils import (apply_chunking_to_forward,
-                                         find_pruneable_heads_and_indices
-                                        )
-from transformers.modeling_flax_utils import ACT2FN
+from transformers import (PreTrainedModel, BertConfig, load_tf_weights_in_bert,
+                          apply_chunking_to_forward
+                         )
+from transformers.modeling_utils import find_pruneable_heads_and_indices
+from transformers.activations import ACT2FN
 from transformers.modeling_outputs import (MaskedLMOutput, 
                                            BaseModelOutputWithPoolingAndCrossAttentions,
                                            BaseModelOutputWithPastAndCrossAttentions
