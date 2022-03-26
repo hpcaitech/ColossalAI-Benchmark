@@ -9,7 +9,7 @@ from bert.colossalai_utils.model_zoo.bert import BertMaskedLMLoss, BertForMasked
 
 _bert_small = dict(
     seq_length=512,
-    vocab_size=50260,
+    vocab_size=50304,
     hidden_size=768,
     num_heads=12,
     depth=12,
@@ -78,7 +78,7 @@ def build_data():
                                     keep_in_memory=True,
                                     remove_columns='text')
 
-    CONFIG['model']['vocab_size'] = len(tokenizer)
+    CONFIG['model']['vocab_size'] = 50304#len(tokenizer)
 
     def seed_worker(_):
         worker_seed = 1024
@@ -123,8 +123,8 @@ def build_model():
 
     return model
 
-def build_loss():
-    return BertMaskedLMLoss(CONFIG['model']['vocab_size'])
+def build_loss(TENSOR_PARALLEL=1):
+    return BertMaskedLMLoss(CONFIG['model']['vocab_size'] // TENSOR_PARALLEL)
 
 def build_optimizer(params):
     optimizer = torch.optim.AdamW(params,
@@ -139,12 +139,15 @@ def build_scheduler(epoch_steps, optimizer):
 
     max_steps = epoch_steps * CONFIG['hyperparameter']['num_epochs']
     warmup_steps = epoch_steps * CONFIG['hyperparameter']['warmup_epochs']
-    #lr_scheduler = get_linear_schedule_with_warmup(optimizer,
-    #                                               num_warmup_steps=warmup_steps,
-    #                                               num_training_steps=max_steps)
-    lr_scheduler = LinearWarmupLR(optimizer,
-                                  total_steps=max_steps,
-                                  warmup_steps=warmup_steps)
+    
+    if CONFIG['method'] == 'colossalai':
+        lr_scheduler = LinearWarmupLR(optimizer,
+                                      total_steps=max_steps,
+                                      warmup_steps=warmup_steps)
+    else:
+        lr_scheduler = get_linear_schedule_with_warmup(optimizer,
+                                                       num_warmup_steps=warmup_steps,
+                                                       num_training_steps=max_steps)
 
     return lr_scheduler
 

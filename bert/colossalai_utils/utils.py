@@ -6,7 +6,7 @@ from torch.distributed import get_rank
 def init_w_col(builder):
     import colossalai
     from colossalai.core import global_context as gpc
-    #from colossalai.logging import disable_existing_loggers
+    from colossalai.logging import disable_existing_loggers
     from colossalai.nn.optimizer import CPUAdam
     from colossalai.zero.init_ctx import ZeroInitContext
     from colossalai.zero.shard_utils import (BucketTensorShardStrategy,
@@ -14,6 +14,7 @@ def init_w_col(builder):
     from colossalai.zero.sharded_model import ShardedModel, ShardedModelV2
     from colossalai.zero.sharded_optim import ShardedOptimizerV2
 
+    disable_existing_loggers()
     colossalai.launch_from_torch(config=CONFIG)
 
     build_data, build_model, build_loss, optimizer_class, build_scheduler = builder()
@@ -48,7 +49,11 @@ def init_w_col(builder):
     else:
         model = build_model()
 
-    criterion = build_loss()
+    if use_zero:
+        TENSOR_PARALLEL = 1
+    else:
+        TENSOR_PARALLEL = gpc.config.parallel.tensor.size
+    criterion = build_loss(TENSOR_PARALLEL=1)
 
     print_log(f'Peak Memory = {max_memory_allocated(rank) / (1024 * 1024)} M')
     reset_peak_memory_stats(rank)
@@ -73,13 +78,14 @@ def init_w_col(builder):
     lr_scheduler = build_scheduler(len(train_data), optimizer)
     print_log(f'Peak Memory = {max_memory_allocated(rank) / (1024 * 1024)} M')
 
-    if not use_zero:
-        engine, train_data, test_data, _ = colossalai.initialize(model, 
-                                                                        optimizer, 
-                                                                        criterion, 
-                                                                        train_data, 
-                                                                        test_data)
-        model = engine
-        criterion = engine.criterion
+    #if not use_zero:
+    engine, train_data, test_data, _ = colossalai.initialize(model, 
+                                                                    optimizer, 
+                                                                    criterion, 
+                                                                    train_data, 
+                                                                    test_data)
+    model = engine
+    criterion = engine.criterion
+    optimizer = engine
 
-    return model, train_data, test_data, criterion, engine, None, lr_scheduler
+    return model, train_data, test_data, criterion, optimizer, None, lr_scheduler

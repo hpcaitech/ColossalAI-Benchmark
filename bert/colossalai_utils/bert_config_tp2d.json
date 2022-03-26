@@ -12,7 +12,7 @@
     "parallel": {
         "pipeline": 1,
         "tensor": {
-            "mode": "1d",
+            "mode": "2d",
             "size": 4
         }
     },
