@@ -19,36 +19,6 @@ from packaging import version
 from colossalai import nn as col_nn
 from colossalai.nn.layer.utils import divide 
 
-def prune_linear_layer(layer: col_nn.Linear, index: torch.LongTensor, dim: int = 0) -> col_nn.Linear:
-    """
-    Prune a linear layer to keep only entries in index.
-    Used to remove heads.
-    Args:
-        layer (`torch.nn.Linear`): The layer to prune.
-        index (`torch.LongTensor`): The indices to keep in the layer.
-        dim (`int`, *optional*, defaults to 0): The dimension on which to keep the indices.
-    Returns:
-        `torch.nn.Linear`: The pruned layer as a new layer with `requires_grad=True`.
-    """
-    index = index.to(layer.weight.device)
-    W = layer.weight.index_select(dim, index).clone().detach()
-    if layer.bias is not None:
-        if dim == 1:
-            b = layer.bias.clone().detach()
-        else:
-            b = layer.bias[index].clone().detach()
-    new_size = list(layer.weight.size())
-    new_size[dim] = len(index)
-    new_layer = col_nn.Linear(new_size[1], new_size[0], bias=layer.bias is not None).to(layer.weight.device)
-    new_layer.weight.requires_grad = False
-    new_layer.weight.copy_(W.contiguous())
-    new_layer.weight.requires_grad = True
-    if layer.bias is not None:
-        new_layer.bias.requires_grad = False
-        new_layer.bias.copy_(b.contiguous())
-        new_layer.bias.requires_grad = True
-    return new_layer
-
 class BertSelfOutput(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -177,25 +147,6 @@ class BertAttention(nn.Module):
         super().__init__()
         self.self = BertSelfAttention(config, position_embedding_type=position_embedding_type)
         self.output = BertSelfOutput(config)
-        self.pruned_heads = set()
-
-    def prune_heads(self, heads):
-        if len(heads) == 0:
-            return
-        heads, index = find_pruneable_heads_and_indices(
-            heads, self.self.num_attention_heads, self.self.attention_head_size, self.pruned_heads
-        )
-
-        # Prune linear layers
-        self.self.query = prune_linear_layer(self.self.query, index)
-        self.self.key = prune_linear_layer(self.self.key, index)
-        self.self.value = prune_linear_layer(self.self.value, index)
-        self.output.dense = prune_linear_layer(self.output.dense, index, dim=1)
-
-        # Update hyper params and store pruned heads
-        self.self.num_attention_heads = self.self.num_attention_heads - len(heads)
-        self.self.all_head_size = self.self.attention_head_size * self.self.num_attention_heads
-        self.pruned_heads = self.pruned_heads.union(heads)
 
     def forward(
         self,
@@ -225,10 +176,7 @@ class BertIntermediate(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = col_nn.Linear(config.hidden_size, config.intermediate_size)
-        if isinstance(config.hidden_act, str):
-            self.intermediate_act_fn = ACT2FN[config.hidden_act]
-        else:
-            self.intermediate_act_fn = config.hidden_act
+        self.intermediate_act_fn = ACT2FN[config.hidden_act]
 
     def forward(self, hidden_states):
         hidden_states = self.dense(hidden_states)
@@ -414,7 +362,7 @@ class BertMaskedLMLoss(torch.nn.Module):
     def __init__(self, vocab_size):
         super().__init__()
         self.vocab_size = vocab_size
-        self.loss = nn.CrossEntropyLoss()
+        self.loss = col_nn.CrossEntropyLoss()
 
     def forward(self, logits, labels):
         ###print("Loss:")
@@ -566,14 +514,6 @@ class BertModel(BertPreTrainedModel):
 
     def set_input_embeddings(self, value):
         self.embeddings.word_embeddings = value
-
-    def _prune_heads(self, heads_to_prune):
-        """
-        Prunes heads of the model. heads_to_prune: dict of {layer_num: list of heads to prune in this layer} See base
-        class PreTrainedModel
-        """
-        for layer, heads in heads_to_prune.items():
-            self.encoder.layer[layer].attention.prune_heads(heads)
 
     def forward(
         self,
