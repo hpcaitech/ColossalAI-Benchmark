@@ -17,7 +17,7 @@ from torch import nn
 from packaging import version
 
 from colossalai import nn as col_nn
-from colossalai.nn.layer.utils import divide 
+from colossalai.nn.layer.utils import divide , get_tensor_parallel_mode
 
 class BertSelfOutput(nn.Module):
     def __init__(self, config):
@@ -363,7 +363,12 @@ class BertPooler(nn.Module):
 class BertMaskedLMLoss(torch.nn.Module):
     def __init__(self, vocab_size):
         super().__init__()
-        self.vocab_size = vocab_size
+        #TODO: Need know the last dim
+        mode = get_tensor_parallel_mode()
+        if mode == '1d':
+            self.vocab_size = vocab_size
+        elif mode == '2d':
+            self.vocab_size = vocab_size * 2
         self.loss = col_nn.CrossEntropyLoss()
 
     def forward(self, logits, labels):
@@ -656,9 +661,16 @@ class BertModel(BertPreTrainedModel):
 class BertPredictionHeadTransform(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.transform_act_fn = ACT2FN[config.hidden_act]
-        self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        #TODO: For tp1d, nn.Linear & nn.LayerNorm
+        mode = get_tensor_parallel_mode()
+        if mode == '1d': 
+            self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+            self.transform_act_fn = ACT2FN[config.hidden_act]
+            self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        elif mode == '2d':
+            self.dense = col_nn.Linear(config.hidden_size, config.hidden_size)
+            self.transform_act_fn = ACT2FN[config.hidden_act]
+            self.LayerNorm = col_nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
     def forward(self, hidden_states):
         ###print("BertPredictionHeadTransform:input:", hidden_states.shape)
