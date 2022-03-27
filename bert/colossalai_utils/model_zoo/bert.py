@@ -17,6 +17,7 @@ from torch import nn
 from packaging import version
 
 from colossalai import nn as col_nn
+from colossalai.nn.layer.utils import divide 
 
 def prune_linear_layer(layer: col_nn.Linear, index: torch.LongTensor, dim: int = 0) -> col_nn.Linear:
     """
@@ -71,7 +72,7 @@ class BertSelfAttention(nn.Module):
             )
 
         self.num_attention_heads = config.num_attention_heads
-        self.attention_head_size = int(config.hidden_size / config.num_attention_heads)
+        self.attention_head_size = divide(config.hidden_size, config.num_attention_heads)
 
         self.query_key_value = col_nn.Linear(config.hidden_size, self.num_attention_heads * self.attention_head_size * 3)
 
@@ -96,26 +97,23 @@ class BertSelfAttention(nn.Module):
         output_attentions=False,
     ):
         qkv = self.query_key_value(hidden_states)
+        all_head_size = qkv.shape[-1] // 3
+        num_attention_heads = divide(all_head_size, self.attention_head_size)
+        new_qkv_shape = qkv.shape[:-1] + \
+            (num_attention_heads, 3 * self.attention_head_size)
+        qkv = qkv.view(new_qkv_shape)
+        qkv = qkv.permute((0, 2, 1, 3))
         ###print("BertSelfAttention:qkv:", qkv.shape)
         q, k, v = torch.chunk(qkv, 3, dim=-1)
-        mixed_query_layer = q
-
-        all_head_size = mixed_query_layer.shape[-1]
-        num_attention_heads = all_head_size // self.attention_head_size
-        def transpose_for_scores(x):
-            new_x_shape = x.size()[:-1] + (num_attention_heads, self.attention_head_size)
-            x = x.view(new_x_shape)
-            return x.permute(0, 2, 1, 3)
 
         # If this is instantiated as a cross-attention module, the keys
         # and values come from an encoder; the attention mask needs to be
         # such that the encoder's padding tokens are not attended to.
         is_cross_attention = encoder_hidden_states is not None
 
-        key_layer = transpose_for_scores(k)
-        value_layer = transpose_for_scores(v)
-
-        query_layer = transpose_for_scores(mixed_query_layer)
+        query_layer = q
+        key_layer = k
+        value_layer = v
 
         if self.is_decoder:
             # if cross_attention save Tuple(torch.Tensor, torch.Tensor) of all cross attention key/value_states.
