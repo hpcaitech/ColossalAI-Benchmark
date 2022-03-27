@@ -5,7 +5,7 @@ from torch.distributed import get_world_size
 from transformers import BertConfig, BertTokenizer
 
 from zero.common.utils import CONFIG, ModelFromHF, get_model_size
-from bert.colossalai_utils.model_zoo.bert import BertMaskedLMLoss, BertForMaskedLM
+from bert.colossalai_utils.model_zoo.bert import BertMaskedLMLoss, Bert
 
 _bert_small = dict(
     seq_length=512,
@@ -119,7 +119,7 @@ def build_model():
                           max_position_embeddings=model_cfg['seq_length'],
                           use_cache=not CONFIG['model'].get('checkpoint', False))
 
-    model = ModelFromHF(bert_cfg, BertForMaskedLM)
+    model = ModelFromHF(bert_cfg, Bert)
 
     return model
 

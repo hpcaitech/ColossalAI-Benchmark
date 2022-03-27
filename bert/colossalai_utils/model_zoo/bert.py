@@ -18,7 +18,7 @@ from packaging import version
 
 from colossalai import nn as col_nn
 
-def prune_linear_layer(layer: nn.Linear, index: torch.LongTensor, dim: int = 0) -> nn.Linear:
+def prune_linear_layer(layer: col_nn.Linear, index: torch.LongTensor, dim: int = 0) -> col_nn.Linear:
     """
     Prune a linear layer to keep only entries in index.
     Used to remove heads.
@@ -38,7 +38,7 @@ def prune_linear_layer(layer: nn.Linear, index: torch.LongTensor, dim: int = 0) 
             b = layer.bias[index].clone().detach()
     new_size = list(layer.weight.size())
     new_size[dim] = len(index)
-    new_layer = nn.Linear(new_size[1], new_size[0], bias=layer.bias is not None).to(layer.weight.device)
+    new_layer = col_nn.Linear(new_size[1], new_size[0], bias=layer.bias is not None).to(layer.weight.device)
     new_layer.weight.requires_grad = False
     new_layer.weight.copy_(W.contiguous())
     new_layer.weight.requires_grad = True
@@ -52,8 +52,8 @@ class BertSelfOutput(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = col_nn.Linear(config.hidden_size, config.hidden_size)
-        self.LayerNorm = col_nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = col_nn.Dropout(config.hidden_dropout_prob)
+        self.LayerNorm = col_nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
     def forward(self, hidden_states, input_tensor):
         hidden_states = self.dense(hidden_states)
@@ -96,6 +96,7 @@ class BertSelfAttention(nn.Module):
         output_attentions=False,
     ):
         qkv = self.query_key_value(hidden_states)
+        ###print("BertSelfAttention:qkv:", qkv.shape)
         q, k, v = torch.chunk(qkv, 3, dim=-1)
         mixed_query_layer = q
 
@@ -219,6 +220,7 @@ class BertAttention(nn.Module):
         )
         attention_output = self.output(self_outputs[0], hidden_states)
         outputs = (attention_output,) + self_outputs[1:]  # add attentions if we output them
+        ###print("BertAttention:attention_output:", attention_output.shape)        
         return outputs
 
 class BertIntermediate(nn.Module):
@@ -338,8 +340,8 @@ class BertEmbeddings(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.word_embeddings = col_nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id)
-        self.position_embeddings = col_nn.Embedding(config.max_position_embeddings, config.hidden_size)
         self.token_type_embeddings = col_nn.Embedding(config.type_vocab_size, config.hidden_size)
+        self.position_embeddings = col_nn.Embedding(config.max_position_embeddings, config.hidden_size)
 
         # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name and be able to load
         # any TensorFlow checkpoint file
@@ -381,14 +383,19 @@ class BertEmbeddings(nn.Module):
 
         if inputs_embeds is None:
             inputs_embeds = self.word_embeddings(input_ids)
+            ###print("BertEmbeddings:word_embeddings:", inputs_embeds.shape)
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
+        ###print("BertEmbeddings:token_type_embeddings:", token_type_embeddings.shape)
 
         embeddings = inputs_embeds + token_type_embeddings
         if self.position_embedding_type == "absolute":
             position_embeddings = self.position_embeddings(position_ids)
+            ###print("BertEmbeddings:position_embeddings:", position_embeddings.shape)
             embeddings += position_embeddings
         embeddings = self.LayerNorm(embeddings)
+        ###print("BertEmbeddings:LayerNorm:", embeddings.shape)
         embeddings = self.dropout(embeddings)
+        ###print("BertEmbeddings:dropout:", embeddings.shape)
         return embeddings
 
 class BertPooler(nn.Module):
@@ -412,6 +419,8 @@ class BertMaskedLMLoss(torch.nn.Module):
         self.loss = nn.CrossEntropyLoss()
 
     def forward(self, logits, labels):
+        ###print("Loss:")
+        ###print(logits.view(-1, 50304).shape)
         return self.loss(logits.view(-1, self.vocab_size), labels.view(-1))
 
 class BertEncoder(nn.Module):
@@ -668,6 +677,7 @@ class BertModel(BertPreTrainedModel):
             inputs_embeds=inputs_embeds,
             past_key_values_length=past_key_values_length,
         )
+        ###print("BertModel:emeddings:", embedding_output.shape)
         encoder_outputs = self.encoder(
             embedding_output,
             attention_mask=extended_attention_mask,
@@ -698,17 +708,18 @@ class BertModel(BertPreTrainedModel):
 class BertPredictionHeadTransform(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.dense = col_nn.Linear(config.hidden_size, config.hidden_size)
-        if isinstance(config.hidden_act, str):
-            self.transform_act_fn = ACT2FN[config.hidden_act]
-        else:
-            self.transform_act_fn = config.hidden_act
-        self.LayerNorm = col_nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+        self.transform_act_fn = ACT2FN[config.hidden_act]
+        self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
     def forward(self, hidden_states):
+        ###print("BertPredictionHeadTransform:input:", hidden_states.shape)
         hidden_states = self.dense(hidden_states)
+        ###print("BertPredictionHeadTransform:after dense:", hidden_states.shape)
         hidden_states = self.transform_act_fn(hidden_states)
+        ###print("BertPredictionHeadTransform:after act2fn:", hidden_states.shape)
         hidden_states = self.LayerNorm(hidden_states)
+        ###print("BertPredictionHeadTransform:output:", hidden_states.shape)
         return hidden_states
 
 class BertLMPredictionHead(nn.Module):
@@ -718,7 +729,7 @@ class BertLMPredictionHead(nn.Module):
 
         # The output weights are the same as the input embeddings, but there is
         # an output-only bias for each token.
-        self.decoder = col_nn.Classifier(config.hidden_size, config.vocab_size, bias=False)
+        self.decoder = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         self.bias = nn.Parameter(torch.zeros(config.vocab_size))
 
@@ -726,8 +737,11 @@ class BertLMPredictionHead(nn.Module):
         self.decoder.bias = self.bias
 
     def forward(self, hidden_states):
+        ###print("BertLMPredictionHead:input:", hidden_states.shape)
         hidden_states = self.transform(hidden_states)
+        ###print("BertLMPredictionHead:after transfrom:", hidden_states.shape)
         hidden_states = self.decoder(hidden_states)
+        ###print("BertLMPredictionHead:output:", hidden_states.shape)
         return hidden_states
 
 class BertOnlyMLMHead(nn.Module):
@@ -799,6 +813,9 @@ class BertForMaskedLM(BertPreTrainedModel):
 
         sequence_output = outputs[0]
         prediction_scores = self.cls(sequence_output)
+        ###print("BertForMaskedLM:")
+        ###print(sequence_output.shape)
+        ###print(prediction_scores.shape)
 
         masked_lm_loss = None
 
