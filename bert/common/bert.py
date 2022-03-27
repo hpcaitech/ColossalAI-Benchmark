@@ -9,7 +9,7 @@ from bert.colossalai_utils.model_zoo.bert import BertMaskedLMLoss, Bert
 
 _bert_small = dict(
     seq_length=512,
-    vocab_size=50304,
+    vocab_size=32400,
     hidden_size=768,
     num_heads=12,
     depth=12,
