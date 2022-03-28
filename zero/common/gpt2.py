@@ -129,6 +129,46 @@ _gpt2_20b = dict(
     evaluation='ppl',
 )
 
+_gpt2_24b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=8192,
+    num_heads=16,
+    depth=30,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
+_gpt2_28b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=8192,
+    num_heads=16,
+    depth=35,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
+_gpt2_32b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=8192,
+    num_heads=16,
+    depth=40,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
+_gpt2_36b = dict(
+    seq_length=1024,
+    vocab_size=50257,
+    hidden_size=8192,
+    num_heads=16,
+    depth=45,
+    checkpoint=True,
+    evaluation='ppl',
+)
+
 _gpt2_40b = dict(
     seq_length=1024,
     vocab_size=50257,
@@ -153,7 +193,11 @@ _gpt2_configurations = dict(
     gpt2_15b=_gpt2_15b,
     gpt2_18b=_gpt2_18b,
     gpt2_20b=_gpt2_20b,
-    gpt2_40b=_gpt2_40b
+    gpt2_40b=_gpt2_40b,
+    gpt2_24b=_gpt2_24b,
+    gpt2_28b=_gpt2_28b,
+    gpt2_32b=_gpt2_32b,
+    gpt2_36b=_gpt2_36b
 )
 
 _default_hyperparameters = dict(
