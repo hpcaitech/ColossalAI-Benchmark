@@ -18,6 +18,7 @@ from packaging import version
 
 from colossalai import nn as col_nn
 from colossalai.nn.layer.utils import divide , get_tensor_parallel_mode
+from colossalai.core import global_context as gpc
 
 class BertSelfOutput(nn.Module):
     def __init__(self, config):
@@ -662,15 +663,9 @@ class BertPredictionHeadTransform(nn.Module):
     def __init__(self, config):
         super().__init__()
         #TODO: For tp1d, nn.Linear & nn.LayerNorm
-        mode = get_tensor_parallel_mode()
-        if mode == '1d': 
-            self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-            self.transform_act_fn = ACT2FN[config.hidden_act]
-            self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        elif mode == '2d':
-            self.dense = col_nn.Linear(config.hidden_size, config.hidden_size)
-            self.transform_act_fn = ACT2FN[config.hidden_act]
-            self.LayerNorm = col_nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.dense = col_nn.Linear(config.hidden_size, config.hidden_size, gather_out=True)
+        self.transform_act_fn = ACT2FN[config.hidden_act]
+        self.LayerNorm = col_nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
     def forward(self, hidden_states):
         ###print("BertPredictionHeadTransform:input:", hidden_states.shape)
@@ -689,12 +684,7 @@ class BertLMPredictionHead(nn.Module):
 
         # The output weights are the same as the input embeddings, but there is
         # an output-only bias for each token.
-        self.decoder = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-
-        self.bias = nn.Parameter(torch.zeros(config.vocab_size))
-
-        # Need a link between the two variables so that the bias is correctly resized with `resize_token_embeddings`
-        self.decoder.bias = self.bias
+        self.decoder = nn.Linear(config.hidden_size, config.vocab_size, bias=True)
 
     def forward(self, hidden_states):
         ###print("BertLMPredictionHead:input:", hidden_states.shape)

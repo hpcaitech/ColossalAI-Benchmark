@@ -11,7 +11,7 @@ def init_w_col(builder):
     from colossalai.zero.init_ctx import ZeroInitContext
     from colossalai.zero.shard_utils import (BucketTensorShardStrategy,
                                              TensorShardStrategy)
-    from colossalai.zero.sharded_model import ShardedModel, ShardedModelV2
+    from colossalai.zero.sharded_model import ShardedModelV2
     from colossalai.zero.sharded_optim import ShardedOptimizerV2
 
     disable_existing_loggers()
@@ -35,17 +35,14 @@ def init_w_col(builder):
 
     print_log('Building model')
     if use_zero:
-        if use_v2:
-            shard_strategy = BucketTensorShardStrategy()
-            with ZeroInitContext(convert_fp16='fp16' in gpc.config,
-                                target_device=torch.cuda.current_device(),
-                                shard_strategy=shard_strategy,
-                                shard_param=True):
-                model = build_model()
-            model = ShardedModelV2(model, shard_strategy, **gpc.config.zero)
-        else:
+        shard_strategy = BucketTensorShardStrategy()
+        with ZeroInitContext(convert_fp16='fp16' in gpc.config,
+                            target_device=torch.cuda.current_device(),
+                            shard_strategy=shard_strategy,
+                            shard_param=True):
             model = build_model()
-            model = ShardedModel(model, **gpc.config.zero)
+        model = ShardedModelV2(model, shard_strategy, **gpc.config.zero)
+
     else:
         model = build_model()
 
