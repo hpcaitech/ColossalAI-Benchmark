@@ -10,7 +10,7 @@ from bert.colossalai_utils.model_zoo.bert import BertMaskedLMLoss, Bert
 _bert_small = dict(
     seq_length=512,
     vocab_size=32400,
-    hidden_size=800,
+    hidden_size=768,
     num_heads=12,
     depth=12,
     ff_size=3072,
@@ -100,6 +100,7 @@ def build_data():
     test_sampler = DistributedSampler(tokenized_dataset['validation'], shuffle=False) if world_size > 1 else None
     test_data = DataLoader(tokenized_dataset['validation'],
                            sampler=test_sampler,
+                           drop_last=True,
                            collate_fn=data_collator,
                            worker_init_fn=seed_worker,
                            batch_size=CONFIG['hyperparameter']['batch_size'],

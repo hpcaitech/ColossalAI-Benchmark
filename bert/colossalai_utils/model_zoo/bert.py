@@ -364,18 +364,13 @@ class BertPooler(nn.Module):
 class BertMaskedLMLoss(torch.nn.Module):
     def __init__(self, vocab_size):
         super().__init__()
-        #TODO: Need know the last dim
-        mode = get_tensor_parallel_mode()
-        if mode == '1d':
-            self.vocab_size = vocab_size
-        elif mode == '2d':
-            self.vocab_size = vocab_size * 2
         self.loss = col_nn.CrossEntropyLoss()
 
     def forward(self, logits, labels):
-        ###print("Loss:")
-        ###print(logits.view(-1, 50304).shape)
-        return self.loss(logits.view(-1, self.vocab_size), labels.view(-1))
+        shift_logits = logits[..., :-1, :].contiguous()
+        shift_labels = labels[..., 1:].contiguous()
+        # Flatten the tokens
+        return self.loss(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
 
 class BertEncoder(nn.Module):
     def __init__(self, config):
@@ -663,7 +658,7 @@ class BertPredictionHeadTransform(nn.Module):
     def __init__(self, config):
         super().__init__()
         #TODO: For tp1d, nn.Linear & nn.LayerNorm
-        self.dense = col_nn.Linear(config.hidden_size, config.hidden_size, gather_out=True)
+        self.dense = col_nn.Linear(config.hidden_size, config.hidden_size, gather_output=True)
         self.transform_act_fn = ACT2FN[config.hidden_act]
         self.LayerNorm = col_nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
