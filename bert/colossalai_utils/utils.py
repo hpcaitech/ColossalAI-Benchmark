@@ -63,7 +63,7 @@ def init_w_col(builder):
             'weight_decay': CONFIG['hyperparameter']['weight_decay']
         }
 
-    if use_zero and use_v2:
+    if use_zero:
         optimizer = optimizer_class(model.parameters(), **optimizer_kwargs)
         optimizer = ShardedOptimizerV2(model,
                                        optimizer,
@@ -75,14 +75,14 @@ def init_w_col(builder):
     lr_scheduler = build_scheduler(len(train_data), optimizer)
     print_log(f'Peak Memory = {max_memory_allocated(rank) / (1024 * 1024)} M')
 
-    #if not use_zero:
-    engine, train_data, test_data, _ = colossalai.initialize(model, 
-                                                                    optimizer, 
-                                                                    criterion, 
-                                                                    train_data, 
-                                                                    test_data)
-    model = engine
-    criterion = engine.criterion
-    optimizer = engine
+    if not use_zero:
+        engine, train_data, test_data, _ = colossalai.initialize(model, 
+                                                                        optimizer, 
+                                                                        criterion, 
+                                                                        train_data, 
+                                                                        test_data)
+        model = engine
+        criterion = engine.criterion
+        optimizer = engine
 
     return model, train_data, test_data, criterion, optimizer, None, lr_scheduler

@@ -23,12 +23,5 @@
             "device": "cpu"
         }
     },
-    "parallel": {
-        "pipeline": 1,
-        "tensor": {
-            "mode": "1d",
-            "size": 1
-        }
-    },
     "use_mem_monitor": true
 }
