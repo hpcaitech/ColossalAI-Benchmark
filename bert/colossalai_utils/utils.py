@@ -44,11 +44,7 @@ def init_w_col(builder):
     else:
         model = build_model()
 
-    if use_zero:
-        TENSOR_PARALLEL = 1
-    else:
-        TENSOR_PARALLEL = gpc.config.parallel.tensor.size
-    criterion = build_loss(TENSOR_PARALLEL=TENSOR_PARALLEL)
+    criterion = build_loss()
 
     print_log(f'Peak Memory = {max_memory_allocated(rank) / (1024 * 1024)} M')
     reset_peak_memory_stats(rank)

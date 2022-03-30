@@ -124,8 +124,8 @@ def build_model():
 
     return model
 
-def build_loss(TENSOR_PARALLEL=1):
-    return BertMaskedLMLoss(CONFIG['model']['vocab_size'] // TENSOR_PARALLEL)
+def build_loss():
+    return BertMaskedLMLoss()
 
 def build_optimizer(params):
     optimizer = torch.optim.AdamW(params,

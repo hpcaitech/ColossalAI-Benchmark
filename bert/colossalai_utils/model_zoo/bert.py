@@ -367,7 +367,7 @@ class BertPooler(nn.Module):
         return pooled_output
 
 class BertMaskedLMLoss(torch.nn.Module):
-    def __init__(self, vocab_size):
+    def __init__(self):
         super().__init__()
         self.loss = col_nn.CrossEntropyLoss()
 
