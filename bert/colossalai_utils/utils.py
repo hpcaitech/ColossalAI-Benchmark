@@ -6,7 +6,6 @@ from torch.distributed import get_rank
 def init_w_col(builder):
     import colossalai
     from colossalai.core import global_context as gpc
-    from colossalai.logging import disable_existing_loggers
     from colossalai.nn.optimizer import CPUAdam
     from colossalai.zero.init_ctx import ZeroInitContext
     from colossalai.zero.shard_utils import (BucketTensorShardStrategy,
@@ -14,7 +13,6 @@ def init_w_col(builder):
     from colossalai.zero.sharded_model import ShardedModelV2
     from colossalai.zero.sharded_optim import ShardedOptimizerV2
 
-    disable_existing_loggers()
     colossalai.launch_from_torch(config=CONFIG)
 
     build_data, build_model, build_loss, optimizer_class, build_scheduler = builder()

@@ -5,7 +5,7 @@ from torch.distributed import get_world_size
 from transformers import BertConfig, BertTokenizer
 
 from zero.common.utils import CONFIG, ModelFromHF, get_model_size
-from bert.colossalai_utils.model_zoo.bert import BertMaskedLMLoss, Bert
+from bert.colossalai_utils.model_zoo.bert import BertMaskedLMLoss, Bert, PipelineBert
 
 _bert_small = dict(
     seq_length=512,

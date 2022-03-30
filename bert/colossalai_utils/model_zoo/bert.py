@@ -19,6 +19,11 @@ from packaging import version
 from colossalai import nn as col_nn
 from colossalai.nn.layer.utils import divide , get_tensor_parallel_mode
 from colossalai.core import global_context as gpc
+from colossalai.logging import get_dist_logger
+from colossalai.context.parallel_mode import ParallelMode
+from colossalai.nn.layer.wrapper import PipelineSharedModuleWrapper
+from colossalai.utils import get_current_device
+from colossalai.builder.pipeline import partition_uniform
 
 class BertSelfOutput(nn.Module):
     def __init__(self, config):
@@ -510,9 +515,6 @@ class BertModel(BertPreTrainedModel):
 
         self.pooler = BertPooler(config) if add_pooling_layer else None
 
-        # Initialize weights and apply final processing
-        self.post_init()
-
     def get_input_embeddings(self):
         return self.embeddings.word_embeddings
 
@@ -791,8 +793,119 @@ class BertForMaskedLM(BertPreTrainedModel):
 
         return {"input_ids": input_ids, "attention_mask": attention_mask}
 
-Bert = BertForMaskedLM
+'''
+Colossalai PipelineBert
+'''
+class PipelineBertForMaskedLM(BertPreTrainedModel):
 
-def _create_bert_model(**model_kwargs):
-    model = Bert(**model_kwargs)
-    return
+    _keys_to_ignore_on_load_unexpected = [r"pooler"]
+    _keys_to_ignore_on_load_missing = [r"position_ids", r"predictions.decoder.bias"]
+
+    def __init__(self, config, first: bool = False, last: bool = False):
+        super().__init__(config)
+        self.first = first
+        self.last = last
+        
+        if self.first:
+            self.embeddings = BertEmbeddings(config)
+
+        self.layer = nn.ModuleList([BertLayer(config) for _ in range(config.num_hidden_layers)])
+
+        if self.last: # For pipeline, only last pipe does Head.
+            self.cls = BertOnlyMLMHead(config)
+
+    def forward(
+        self,
+        x=None,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        encoder_hidden_states=None,
+        encoder_attention_mask=None,
+        labels=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        x = self.embeddings(
+            input_ids=input_ids,
+            position_ids=position_ids,
+            token_type_ids=token_type_ids,
+            inputs_embeds=inputs_embeds
+        )
+
+        # We create a 3D attention mask from a 2D tensor mask.
+        # Sizes are [batch_size, 1, 1, to_seq_length]
+        # So we can broadcast to [batch_size, num_heads, from_seq_length, to_seq_length]
+        # Adapted from huggingface
+        if attention_mask is not None:
+            if self.first:
+                batch_size = input_ids.shape[0]
+            else:
+                batch_size = x.shape[0]
+            attention_mask = attention_mask.view(batch_size, -1)
+            attention_mask = col_nn.partition_batch(attention_mask)
+            attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+            attention_mask = attention_mask.to(dtype=x.dtype)    # fp16 compatibility
+            attention_mask = (1.0 - attention_mask) * -10000.0
+
+        for i, layer_module in enumerate(self.layer):
+            layer_outputs = layer_module(x, attention_mask)
+            x = layer_outputs[0]
+
+        encoder_outpus = tuple(
+            v
+            for v in [
+                hidden_states,
+                next_decoder_cache,
+                all_hidden_states,
+                all_self_attentions,
+                all_cross_attentions,
+            ]
+            if v is not None
+        )
+
+        sequence_output = encoder_outputs[0]
+        bert_output = sequence_output + encoder_outputs[1:]
+
+        output = bert_output[2:]
+        if self.last: # For pipeline, only last pipe does Head.
+            sequence_output = bert_output[0]
+            prediction_scores = self.cls(sequence_output)
+            output = (prediction_scores,) + output
+
+        return output
+
+def create_bert_pipeline_model(config):
+    num_chunks = 1
+    layer_partitions = None
+    depth = config.num_hidden_layers
+
+    logger = get_dist_logger()
+    pipeline_size = gpc.get_world_size(ParallelMode.PIPELINE)
+    pipeline_rank = gpc.get_local_rank(ParallelMode.PIPELINE)
+    rank = gpc.get_global_rank()
+    wrapper = PipelineSharedModuleWrapper([0, pipeline_size - 1])
+    parts = partition_uniform(depth, pipeline_size,
+                              num_chunks)[pipeline_rank] if layer_partitions is None else layer_partitions
+    models = []
+    for start, end in parts:
+        first = start == 0
+        last = end == depth
+        config.num_hidden_layers = end - start
+        chunk = PipelineBertForMaskedLM(config, first, last).to(get_current_device())
+
+        models.append(chunk)
+        logger.info(f'==> Rank {rank} built layer {start}-{end} / total {depth}')
+    if len(models) == 1:
+        model = models[0]
+    else:
+        model = nn.ModuleList(models)
+    return model
+
+
+Bert = BertForMaskedLM
+PipelineBert = create_bert_pipeline_model
