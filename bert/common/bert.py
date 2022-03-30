@@ -78,7 +78,7 @@ def build_data():
                                     keep_in_memory=True,
                                     remove_columns='text')
 
-    CONFIG['model']['vocab_size'] = 50304#len(tokenizer)
+    CONFIG['model']['vocab_size'] = 50304
 
     def seed_worker(_):
         worker_seed = 1024
