@@ -659,7 +659,6 @@ class BertModel(BertPreTrainedModel):
 class BertPredictionHeadTransform(nn.Module):
     def __init__(self, config):
         super().__init__()
-        #TODO: For tp1d, nn.Linear & nn.LayerNorm
         self.dense = col_nn.Linear(config.hidden_size, config.hidden_size, gather_output=True)
         self.transform_act_fn = ACT2FN[config.hidden_act]
         self.LayerNorm = col_nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
@@ -796,13 +795,9 @@ class BertForMaskedLM(BertPreTrainedModel):
 '''
 Colossalai PipelineBert
 '''
-class PipelineBertForMaskedLM(BertPreTrainedModel):
-
-    _keys_to_ignore_on_load_unexpected = [r"pooler"]
-    _keys_to_ignore_on_load_missing = [r"position_ids", r"predictions.decoder.bias"]
-
+class PipelineBertForMaskedLM(nn.Module):
     def __init__(self, config, first: bool = False, last: bool = False):
-        super().__init__(config)
+        super().__init__()
         self.first = first
         self.last = last
         
@@ -830,12 +825,13 @@ class PipelineBertForMaskedLM(BertPreTrainedModel):
         output_hidden_states=None,
         return_dict=None,
     ):
-        x = self.embeddings(
-            input_ids=input_ids,
-            position_ids=position_ids,
-            token_type_ids=token_type_ids,
-            inputs_embeds=inputs_embeds
-        )
+        if self.first:
+            x = self.embeddings(
+                input_ids=input_ids,
+                position_ids=position_ids,
+                token_type_ids=token_type_ids,
+                inputs_embeds=inputs_embeds
+            )
 
         # We create a 3D attention mask from a 2D tensor mask.
         # Sizes are [batch_size, 1, 1, to_seq_length]
@@ -856,28 +852,10 @@ class PipelineBertForMaskedLM(BertPreTrainedModel):
             layer_outputs = layer_module(x, attention_mask)
             x = layer_outputs[0]
 
-        encoder_outpus = tuple(
-            v
-            for v in [
-                hidden_states,
-                next_decoder_cache,
-                all_hidden_states,
-                all_self_attentions,
-                all_cross_attentions,
-            ]
-            if v is not None
-        )
-
-        sequence_output = encoder_outputs[0]
-        bert_output = sequence_output + encoder_outputs[1:]
-
-        output = bert_output[2:]
         if self.last: # For pipeline, only last pipe does Head.
-            sequence_output = bert_output[0]
-            prediction_scores = self.cls(sequence_output)
-            output = (prediction_scores,) + output
+            x = self.cls(x)
 
-        return output
+        return x
 
 def create_bert_pipeline_model(config):
     num_chunks = 1

@@ -70,11 +70,12 @@ def init_w_col(builder):
     print_log(f'Peak Memory = {max_memory_allocated(rank) / (1024 * 1024)} M')
 
     if not use_zero:
-        engine, train_data, test_data, _ = colossalai.initialize(model, 
+        engine, train_data, test_data, lr_scheduler = colossalai.initialize(model, 
                                                                         optimizer, 
                                                                         criterion, 
                                                                         train_data, 
-                                                                        test_data)
+                                                                        test_data,
+                                                                        lr_scheduler)
         model = engine
         criterion = engine.criterion
         optimizer = engine

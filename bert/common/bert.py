@@ -95,7 +95,7 @@ def build_data():
                             collate_fn=data_collator,
                             worker_init_fn=seed_worker,
                             batch_size=CONFIG['hyperparameter']['batch_size'],
-                            num_workers=4,
+                            num_workers=0,
                             pin_memory=True)
     test_sampler = DistributedSampler(tokenized_dataset['validation'], shuffle=False) if world_size > 1 else None
     test_data = DataLoader(tokenized_dataset['validation'],
@@ -104,7 +104,7 @@ def build_data():
                            collate_fn=data_collator,
                            worker_init_fn=seed_worker,
                            batch_size=CONFIG['hyperparameter']['batch_size'],
-                           num_workers=4,
+                           num_workers=0,
                            pin_memory=True)
 
     return train_data, test_data
@@ -120,7 +120,11 @@ def build_model():
                           max_position_embeddings=model_cfg['seq_length'],
                           use_cache=not CONFIG['model'].get('checkpoint', False))
 
-    model = ModelFromHF(bert_cfg, Bert)
+    use_pipeline = 'parallel' in CONFIG and 'pipeline' in CONFIG['parallel'] and int(CONFIG['parallel']['pipeline']) > 1
+    if use_pipeline:
+        model = PipelineBert(bert_cfg)
+    else:
+        model = ModelFromHF(bert_cfg, Bert)
 
     return model
 
@@ -143,8 +147,8 @@ def build_scheduler(epoch_steps, optimizer):
     
     if CONFIG['method'] == 'colossalai':
         lr_scheduler = LinearWarmupLR(optimizer,
-                                      total_steps=max_steps,
-                                      warmup_steps=warmup_steps)
+                                        total_steps=max_steps,
+                                        warmup_steps=warmup_steps)
     else:
         lr_scheduler = get_linear_schedule_with_warmup(optimizer,
                                                        num_warmup_steps=warmup_steps,

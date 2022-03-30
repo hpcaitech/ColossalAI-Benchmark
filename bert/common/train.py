@@ -80,45 +80,10 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
 
         bwd_start = time.time()
 
-        if use_colossalai_zero_v1:
-            loss.backward()
-            optimizer.step()
-            lr_scheduler.step()
-        elif use_integrated_backward:  # deepspeed & patrickstar style
-            model.backward(loss)
-            if use_integrated_step:
-                model.step()  # deepspeed style
-            else:
-                optimizer.step()  # patrickstar style
-                lr_scheduler.step()
-
-        elif use_optimizer_backward:  # colossalai style
-            optimizer.backward(loss)
-            optimizer.step()
-            lr_scheduler.step()
-
-        elif scaler is not None:  # torch & fairscale amp style
-            scaler.scale(loss).backward()
-            scaler.unscale_(optimizer)
-            if clip_grad_norm > 0:
-                if use_integraded_clip_grad:  # fairscale style
-                    model.clip_grad_norm_(clip_grad_norm)
-                else:  # torch style
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), clip_grad_norm)
-            scaler.step(optimizer)
-            scaler.update()
-            lr_scheduler.step()
-
-        else:  # torch & fairscale normal style
-            loss.backward()
-            if clip_grad_norm > 0:
-                if use_integraded_clip_grad:  # fairscale style
-                    model.clip_grad_norm_(clip_grad_norm)
-                else:  # torch style
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), clip_grad_norm)
-            optimizer.step()
-            lr_scheduler.step()
-
+        optimizer.backward(loss)
+        optimizer.step()
+        lr_scheduler.step()
+        
         bwd_end = time.time()
 
         num_steps += 1
@@ -132,11 +97,11 @@ def _train(epoch, rank, world_size, train_dataloader, model, criterion, optimize
 
         if rank == 0:
             progress.set_postfix(loss=loss.item(),
-                                 lr=lr_scheduler.get_last_lr()[0],
-                                 time_forward=fwd_time,
-                                 time_backward=bwd_time,
-                                 throughput=batch_size * world_size / (batch_time + 1e-12),
-                                 tflops=get_tflops(batch_time, batch_tokens * world_size))
+                                lr=lr_scheduler.get_last_lr()[0],
+                                time_forward=fwd_time,
+                                time_backward=bwd_time,
+                                throughput=batch_size * world_size / (batch_time + 1e-12),
+                                tflops=get_tflops(batch_time, batch_tokens * world_size))
 
     peak_mem = None
     if mem_monitor is not None:
@@ -262,6 +227,8 @@ def _test(epoch, rank, world_size, test_dataloader, model, criterion, mem_monito
 
 
 def train(model, train_data, test_data, criterion, optimizer, scaler, lr_scheduler):
+    use_pipeline = 'parallel' in CONFIG and 'pipeline' in CONFIG['parallel'] and int(CONFIG['parallel']['pipeline']) > 1
+
     rank = get_rank()
     world_size = get_world_size()
 
@@ -278,8 +245,41 @@ def train(model, train_data, test_data, criterion, optimizer, scaler, lr_schedul
 
     print_log('Benchmark start.')
 
-    for epoch in range(CONFIG['hyperparameter']['num_epochs']):
-        _train(epoch, rank, world_size, train_data, model, criterion, optimizer, lr_scheduler, scaler, mem_monitor)
-        _test(epoch, rank, world_size, test_data, model, criterion, mem_monitor)
+    if use_pipeline:
+        import colossalai.nn as col_nn
+        from colossalai.engine.schedule import PipelineSchedule
+        from colossalai.utils import MultiTimer, get_dataloader
+        from colossalai.logging import get_dist_logger
+        from colossalai.trainer import Trainer, hooks
+
+        def batch_data_process_func(batch_data):
+            data = {'input_ids': batch_data['input_ids'], 'token_type_ids': batch_data['token_type_ids'], 'attention_mask': batch_data['attention_mask']}
+            labels = batch_data['labels']
+            return data, labels
+
+        timer = MultiTimer()
+        schedule = PipelineSchedule(num_microbatches=2, batch_data_process_func=batch_data_process_func)
+        engine = model
+        logger = get_dist_logger()
+        trainer = Trainer(engine=engine, timer=timer, logger=logger, schedule=schedule)
+
+        hook_list = [
+            hooks.LossHook(),
+            hooks.AccuracyHook(col_nn.metric.Accuracy()),
+            hooks.LogMetricByEpochHook(logger),
+            hooks.LRSchedulerHook(lr_scheduler, by_epoch=True)
+        ]
+
+        trainer.fit(train_dataloader=train_data,
+                    epochs=CONFIG['hyperparameter']['num_epochs'],
+                    test_dataloader=test_data,
+                    test_interval=1,
+                    hooks=hook_list,
+                    display_progress=True)
+
+    else:
+        for epoch in range(CONFIG['hyperparameter']['num_epochs']):
+            _train(epoch, rank, world_size, train_data, model, criterion, optimizer, lr_scheduler, scaler, mem_monitor)
+            _test(epoch, rank, world_size, test_data, model, criterion, mem_monitor)
 
     print_log('Benchmark complete.')

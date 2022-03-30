@@ -10,7 +10,7 @@
     },
     "gradient_clipping": 1.0,
     "parallel": {
-        "pipeline": 2,
+        "pipeline": 4,
         "tensor": {
             "mode": "1d",
             "size": 1
