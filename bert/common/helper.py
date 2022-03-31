@@ -5,7 +5,7 @@ from torch.distributed import get_world_size
 from transformers import BertConfig, BertTokenizer
 
 from zero.common.utils import CONFIG, ModelFromHF, get_model_size
-from bert.colossalai_utils.model_zoo.bert import BertMaskedLMLoss, Bert, PipelineBert
+from bert.colossalai_utils.model_zoo.colo_tp1dcol_bert import ColoBertMaskedLMLoss, ColoBertForMaskedLM, create_colo_bert_pipeline_model
 
 _bert_small = dict(
     seq_length=512,
@@ -35,14 +35,13 @@ _default_hyperparameters = dict(
 
 
 def build_data():
-    import copy
     import random
     from functools import partial
     from itertools import chain
 
     import numpy as np
     from datasets import load_from_disk, set_progress_bar_enabled
-    from torch.utils.data import DataLoader, Dataset, DistributedSampler
+    from torch.utils.data import DataLoader, DistributedSampler
     from transformers import DataCollatorForLanguageModeling
 
     world_size = get_world_size()
@@ -120,14 +119,14 @@ def build_model():
 
     use_pipeline = 'parallel' in CONFIG and 'pipeline' in CONFIG['parallel'] and int(CONFIG['parallel']['pipeline']) > 1
     if use_pipeline:
-        model = PipelineBert(bert_cfg)
+        model = create_colo_bert_pipeline_model(bert_cfg)
     else:
-        model = ModelFromHF(bert_cfg, Bert)
+        model = ModelFromHF(bert_cfg, ColoBertForMaskedLM)
 
     return model
 
 def build_loss():
-    return BertMaskedLMLoss()
+    return ColoBertMaskedLMLoss()
 
 def build_optimizer(params):
     optimizer = torch.optim.AdamW(params,

@@ -1,6 +1,6 @@
 import os
 
-from bert.common.bert import bert_builder
+from bert.common.helper import bert_builder
 from bert.colossalai_utils.utils import init_w_col
 from bert.common.train import train
 from zero.common.utils import CONFIG, load_config, print_log
