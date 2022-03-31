@@ -78,7 +78,7 @@ def build_data():
                                     keep_in_memory=True,
                                     remove_columns='text')
 
-    CONFIG['model']['vocab_size'] = 50304
+    CONFIG['model']['vocab_size'] = len(tokenizer)
 
     def seed_worker(_):
         worker_seed = 1024
@@ -95,7 +95,6 @@ def build_data():
                             collate_fn=data_collator,
                             worker_init_fn=seed_worker,
                             batch_size=CONFIG['hyperparameter']['batch_size'],
-                            num_workers=0,
                             pin_memory=True)
     test_sampler = DistributedSampler(tokenized_dataset['validation'], shuffle=False) if world_size > 1 else None
     test_data = DataLoader(tokenized_dataset['validation'],
@@ -104,7 +103,6 @@ def build_data():
                            collate_fn=data_collator,
                            worker_init_fn=seed_worker,
                            batch_size=CONFIG['hyperparameter']['batch_size'],
-                           num_workers=0,
                            pin_memory=True)
 
     return train_data, test_data
