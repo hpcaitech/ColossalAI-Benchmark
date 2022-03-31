@@ -7,17 +7,17 @@ import math
 from transformers import (PreTrainedModel, BertConfig, load_tf_weights_in_bert,
                           apply_chunking_to_forward
                          )
-from transformers.modeling_utils import find_pruneable_heads_and_indices
 from transformers.activations import ACT2FN
-from transformers.modeling_outputs import (MaskedLMOutput,
-                                           BaseModelOutputWithPoolingAndCrossAttentions,
-                                           BaseModelOutputWithPastAndCrossAttentions
-                                          )
+
+from transformers.modeling_outputs import MaskedLMOutput as HFMaskedLMOutput
+from transformers.modeling_outputs import BaseModelOutputWithPoolingAndCrossAttentions as HFBaseModelOutputWithPoolingAndCrossAttentions
+from transformers.modeling_outputs import BaseModelOutputWithPastAndCrossAttentions as HFBaseModelOutputWithPastAndCrossAttentions
+
 from torch import nn
 from packaging import version
 
 from colossalai import nn as col_nn
-from colossalai.nn.layer.utils import divide , get_tensor_parallel_mode
+from colossalai.nn.layer.utils import divide
 from colossalai.core import global_context as gpc
 from colossalai.logging import get_dist_logger
 from colossalai.context.parallel_mode import ParallelMode
@@ -366,7 +366,7 @@ class BertPooler(nn.Module):
         pooled_output = self.activation(pooled_output)
         return pooled_output
 
-class BertMaskedLMLoss(torch.nn.Module):
+class ColoBertMaskedLMLoss(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.loss = col_nn.CrossEntropyLoss()
@@ -463,7 +463,7 @@ class BertEncoder(nn.Module):
                 ]
                 if v is not None
             )
-        return BaseModelOutputWithPastAndCrossAttentions(
+        return HFBaseModelOutputWithPastAndCrossAttentions(
             last_hidden_state=hidden_states,
             past_key_values=next_decoder_cache,
             hidden_states=all_hidden_states,
@@ -649,7 +649,7 @@ class BertModel(BertPreTrainedModel):
         if not return_dict:
             return (sequence_output, pooled_output) + encoder_outputs[1:]
 
-        return BaseModelOutputWithPoolingAndCrossAttentions(
+        return HFBaseModelOutputWithPoolingAndCrossAttentions(
             last_hidden_state=sequence_output,
             pooler_output=pooled_output,
             past_key_values=encoder_outputs.past_key_values,
@@ -701,7 +701,7 @@ class BertOnlyMLMHead(nn.Module):
         prediction_scores = self.predictions(sequence_output)
         return prediction_scores
 
-class BertForMaskedLM(BertPreTrainedModel):
+class ColoBertForMaskedLM(BertPreTrainedModel):
 
     _keys_to_ignore_on_load_unexpected = [r"pooler"]
     _keys_to_ignore_on_load_missing = [r"position_ids", r"predictions.decoder.bias"]
@@ -771,7 +771,7 @@ class BertForMaskedLM(BertPreTrainedModel):
             output = (prediction_scores,) + outputs[2:]
             return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
 
-        return MaskedLMOutput(
+        return HFMaskedLMOutput(
             loss=masked_lm_loss,
             logits=prediction_scores,
             hidden_states=outputs.hidden_states,
@@ -859,7 +859,7 @@ class PipelineBertForMaskedLM(nn.Module):
 
         return x
 
-def create_bert_pipeline_model(config):
+def create_colo_bert_pipeline_model(config):
     num_chunks = 1
     layer_partitions = None
     depth = config.num_hidden_layers
@@ -885,7 +885,3 @@ def create_bert_pipeline_model(config):
     else:
         model = nn.ModuleList(models)
     return model
-
-
-Bert = BertForMaskedLM
-PipelineBert = create_bert_pipeline_model
