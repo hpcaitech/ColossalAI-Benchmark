@@ -5,11 +5,11 @@ from torch.distributed import get_world_size
 from transformers import BertConfig, BertTokenizer
 
 from zero.common.utils import CONFIG, ModelFromHF, get_model_size
-from bert.colossalai_utils.model_zoo.bert import BertMaskedLMLoss, BertForMaskedLM
+from bert.colossalai_utils.model_zoo.bert import BertMaskedLMLoss, Bert, PipelineBert
 
 _bert_small = dict(
     seq_length=512,
-    vocab_size=50257,
+    vocab_size=32400,
     hidden_size=768,
     num_heads=12,
     depth=12,
@@ -95,15 +95,14 @@ def build_data():
                             collate_fn=data_collator,
                             worker_init_fn=seed_worker,
                             batch_size=CONFIG['hyperparameter']['batch_size'],
-                            num_workers=4,
                             pin_memory=True)
     test_sampler = DistributedSampler(tokenized_dataset['validation'], shuffle=False) if world_size > 1 else None
     test_data = DataLoader(tokenized_dataset['validation'],
                            sampler=test_sampler,
+                           drop_last=True,
                            collate_fn=data_collator,
                            worker_init_fn=seed_worker,
                            batch_size=CONFIG['hyperparameter']['batch_size'],
-                           num_workers=4,
                            pin_memory=True)
 
     return train_data, test_data
@@ -119,12 +118,16 @@ def build_model():
                           max_position_embeddings=model_cfg['seq_length'],
                           use_cache=not CONFIG['model'].get('checkpoint', False))
 
-    model = ModelFromHF(bert_cfg, BertForMaskedLM)
+    use_pipeline = 'parallel' in CONFIG and 'pipeline' in CONFIG['parallel'] and int(CONFIG['parallel']['pipeline']) > 1
+    if use_pipeline:
+        model = PipelineBert(bert_cfg)
+    else:
+        model = ModelFromHF(bert_cfg, Bert)
 
     return model
 
 def build_loss():
-    return BertMaskedLMLoss(CONFIG['model']['vocab_size'])
+    return BertMaskedLMLoss()
 
 def build_optimizer(params):
     optimizer = torch.optim.AdamW(params,
@@ -135,12 +138,19 @@ def build_optimizer(params):
 
 def build_scheduler(epoch_steps, optimizer):
     from transformers.optimization import get_linear_schedule_with_warmup
+    from colossalai.nn.lr_scheduler import LinearWarmupLR
 
     max_steps = epoch_steps * CONFIG['hyperparameter']['num_epochs']
     warmup_steps = epoch_steps * CONFIG['hyperparameter']['warmup_epochs']
-    lr_scheduler = get_linear_schedule_with_warmup(optimizer,
-                                                   num_warmup_steps=warmup_steps,
-                                                   num_training_steps=max_steps)
+    
+    if CONFIG['method'] == 'colossalai':
+        lr_scheduler = LinearWarmupLR(optimizer,
+                                        total_steps=max_steps,
+                                        warmup_steps=warmup_steps)
+    else:
+        lr_scheduler = get_linear_schedule_with_warmup(optimizer,
+                                                       num_warmup_steps=warmup_steps,
+                                                       num_training_steps=max_steps)
 
     return lr_scheduler
 
