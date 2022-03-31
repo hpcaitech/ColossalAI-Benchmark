@@ -1,7 +1,8 @@
 import torch
-from zero.common.utils import CONFIG, get_gpu_memory_mb, get_model_size, print_log
 from torch.cuda import max_memory_allocated, reset_peak_memory_stats
 from torch.distributed import get_rank
+from zero.common.utils import (CONFIG, get_gpu_memory_mb, get_model_size,
+                               print_log)
 
 
 def init_w_col(builder):
@@ -36,13 +37,13 @@ def init_w_col(builder):
 
     print_log('Building model')
     if use_v2:
-        shard_strategy = BucketTensorShardStrategy()
+        shard_strategy = TensorShardStrategy()
         model_numel = torch.zeros(1, dtype=torch.long)
-        with ZeroInitContext(convert_fp16='fp16' in gpc.config,
-                             target_device=torch.cuda.current_device(),
+        with ZeroInitContext(target_device=torch.cuda.current_device(),
                              shard_strategy=shard_strategy,
                              shard_param=True,
-                             model_numel_tensor=model_numel):
+                             model_numel_tensor=model_numel,
+                             rm_torch_payload_on_the_fly=True):
             model = build_model()
         model = ShardedModelV2(model, shard_strategy, **gpc.config.zero)
         if 'numel' not in CONFIG['model']:
