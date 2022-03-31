@@ -195,8 +195,8 @@ class BertOutput(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = col_nn.Linear(config.intermediate_size, config.hidden_size)
-        self.LayerNorm = col_nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = col_nn.Dropout(config.hidden_dropout_prob)
+        self.LayerNorm = col_nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
     def forward(self, hidden_states, input_tensor):
         hidden_states = self.dense(hidden_states)
