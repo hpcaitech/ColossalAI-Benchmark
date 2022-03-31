@@ -1,1 +1,1 @@
-from .bert import *
+from .colossalai_bert import *
