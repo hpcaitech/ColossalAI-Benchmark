@@ -9,7 +9,7 @@ from bert.colossalai_utils.model_zoo.colo_tp1dcol_bert import ColoBertMaskedLMLo
 
 _bert_small = dict(
     seq_length=512,
-    vocab_size=32400,
+    vocab_size=50304,
     hidden_size=768,
     num_heads=12,
     depth=12,
@@ -76,8 +76,6 @@ def build_data():
                                     load_from_cache_file=False,
                                     keep_in_memory=True,
                                     remove_columns='text')
-
-    CONFIG['model']['vocab_size'] = len(tokenizer)
 
     def seed_worker(_):
         worker_seed = 1024
