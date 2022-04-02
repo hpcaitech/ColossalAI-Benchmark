@@ -1,7 +1,7 @@
 {
     "method": "colossalai",
     "model": {
-        "type": "bert_small"
+        "type": "bert_base"
     },
     "hyperparameter": {
         "batch_size": 8,

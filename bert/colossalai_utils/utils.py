@@ -8,10 +8,8 @@ def init_w_col(builder):
     from colossalai.core import global_context as gpc
     from colossalai.nn.optimizer import CPUAdam
     from colossalai.zero.init_ctx import ZeroInitContext
-    from colossalai.zero.shard_utils import (BucketTensorShardStrategy,
-                                             TensorShardStrategy)
-    from colossalai.zero.sharded_model import ShardedModelV2
-    from colossalai.zero.sharded_optim import ShardedOptimizerV2
+    from colossalai.zero.shard_utils import (BucketTensorShardStrategy)
+    from colossalai.amp import AMP_TYPE
 
     colossalai.launch_from_torch(config=CONFIG)
 

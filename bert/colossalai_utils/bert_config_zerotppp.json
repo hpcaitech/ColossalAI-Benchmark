@@ -1,11 +1,11 @@
 {
     "method": "colossalai",
     "model": {
-        "type": "bert_small"
+        "type": "bert_base"
     },
     "hyperparameter": {
         "batch_size": 8,
-        "num_epochs": 20,
+        "num_epochs": 100,
         "steps_per_epoch": 10
     },
     "gradient_clipping": 1.0,
@@ -22,6 +22,13 @@
             "growth_factor": 2.0,
             "backoff_factor": 0.5,
             "growth_interval": 1000
+        }
+    },
+    "parallel": {
+        "pipeline":1,
+        "tensor": {
+            "mode": "1d",
+            "size": 2
         }
     },
     "use_mem_monitor": true
