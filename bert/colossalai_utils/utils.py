@@ -9,7 +9,9 @@ def init_w_col(builder):
     from colossalai.nn.optimizer import CPUAdam
     from colossalai.zero.init_ctx import ZeroInitContext
     from colossalai.zero.shard_utils import (BucketTensorShardStrategy)
-    from colossalai.amp import AMP_TYPE
+
+    from colossalai.utils.memory_utils.utils import colo_set_process_memory_fraction
+    colo_set_process_memory_fraction(0.2)
 
     colossalai.launch_from_torch(config=CONFIG)
 

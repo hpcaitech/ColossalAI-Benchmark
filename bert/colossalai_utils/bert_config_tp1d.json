@@ -5,18 +5,15 @@
     },
     "hyperparameter": {
         "batch_size": 8,
-        "num_epochs": 20,
+        "num_epochs": 10,
         "steps_per_epoch": 10
-    },
-    "fp16": {
-        "mode": "AMP_TYPE.NAIVE"
     },
     "gradient_clipping": 1.0,
     "parallel": {
         "pipeline": 1,
         "tensor": {
             "mode": "1d",
-            "size": 1
+            "size": 2
         }
     },
     "use_mem_monitor": true
