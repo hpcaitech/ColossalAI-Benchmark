@@ -1,11 +1,11 @@
 {
     "method": "colossalai",
     "model": {
-        "type": "bert_small"
+        "type": "bert_base"
     },
     "hyperparameter": {
         "batch_size": 8,
-        "num_epochs": 20,
+        "num_epochs": 10,
         "steps_per_epoch": 10
     },
     "gradient_clipping": 1.0,

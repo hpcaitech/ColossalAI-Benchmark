@@ -682,7 +682,7 @@ class BertLMPredictionHead(nn.Module):
 
         # The output weights are the same as the input embeddings, but there is
         # an output-only bias for each token.
-        self.decoder = nn.Linear(config.hidden_size, config.vocab_size, bias=True)
+        self.decoder = col_nn.Classifier(config.hidden_size, config.vocab_size, bias=True)
 
     def forward(self, hidden_states):
         ###print("BertLMPredictionHead:input:", hidden_states.shape)
@@ -711,9 +711,6 @@ class ColoBertForMaskedLM(BertPreTrainedModel):
 
         self.bert = BertModel(config, add_pooling_layer=False)
         self.cls = BertOnlyMLMHead(config)
-
-        # Initialize weights and apply final processing
-        self.post_init()
 
     def get_output_embeddings(self):
         return self.cls.predictions.decoder

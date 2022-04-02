@@ -5,9 +5,9 @@ from torch.distributed import get_world_size
 from transformers import BertConfig, BertTokenizer
 
 from zero.common.utils import CONFIG, ModelFromHF, get_model_size
-from bert.colossalai_utils.model_zoo.colo_tp1dcol_bert import ColoBertMaskedLMLoss, ColoBertForMaskedLM, create_colo_bert_pipeline_model
+from bert.colossalai_utils.model_zoo.colo_bert import ColoBertMaskedLMLoss, ColoBertForMaskedLM, create_colo_bert_pipeline_model
 
-_bert_small = dict(
+_bert_base = dict(
     seq_length=512,
     vocab_size=50304,
     hidden_size=768,
@@ -18,9 +18,21 @@ _bert_small = dict(
     evaluation='ppl',
 )
 
+_bert_large = dict(
+    seq_length=512,
+    vocab_size=50304,
+    hidden_size=1024,
+    num_heads=16,
+    depth=24,
+    ff_size=3072,
+    checkpoint=False,
+    evaluation='ppl',
+)
+
 _bert_configurations = dict(
-    bert=_bert_small,
-    bert_small=_bert_small,
+    bert=_bert_base,
+    bert_base=_bert_base,
+    bert_large=_bert_large
 )
 
 _default_hyperparameters = dict(
