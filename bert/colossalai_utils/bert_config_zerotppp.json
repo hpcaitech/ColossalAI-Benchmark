@@ -1,22 +1,19 @@
 {
     "method": "colossalai",
     "model": {
-        "type": "bert_base"
+        "type": "bert_large"
     },
     "hyperparameter": {
-        "batch_size": 8,
-        "num_epochs": 100,
+        "batch_size": 16,
+        "num_epochs": 4,
         "steps_per_epoch": 10
     },
     "gradient_clipping": 1.0,
     "zero": {
         "model_config": {
-            "offload_config": {
-                "device": "cpu"
-            }
+            "tensor_placement_policy": "cuda"
         },
         "optimizer_config": {
-            "cpu_offload": true,
             "initial_scale": 256,
             "min_scale": 1,
             "growth_factor": 2.0,
@@ -27,8 +24,9 @@
     "parallel": {
         "pipeline":1,
         "tensor": {
-            "mode": "1d",
-            "size": 2
+            "mode": "2.5d",
+            "size": 8,
+            "depth": 2
         }
     },
     "use_mem_monitor": true

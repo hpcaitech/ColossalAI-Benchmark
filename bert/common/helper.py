@@ -21,10 +21,10 @@ _bert_base = dict(
 _bert_large = dict(
     seq_length=512,
     vocab_size=50304,
-    hidden_size=1024,
-    num_heads=16,
-    depth=24,
-    ff_size=3072,
+    hidden_size=2048,
+    num_heads=32,
+    depth=36,
+    ff_size=4096,
     checkpoint=False,
     evaluation='ppl',
 )

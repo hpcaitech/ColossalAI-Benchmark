@@ -23,7 +23,7 @@ from colossalai.logging import get_dist_logger
 from colossalai.context.parallel_mode import ParallelMode
 from colossalai.nn.layer.wrapper import PipelineSharedModuleWrapper
 from colossalai.utils import get_current_device
-from colossalai.builder.pipeline import partition_uniform
+#from colossalai.builder.pipeline import partition_uniform
 
 class BertSelfOutput(nn.Module):
     def __init__(self, config):
@@ -342,10 +342,10 @@ class BertEmbeddings(nn.Module):
         ###print("BertEmbeddings:token_type_embeddings:", token_type_embeddings.shape)
 
         embeddings = inputs_embeds + token_type_embeddings
-        if self.position_embedding_type == "absolute":
-            position_embeddings = self.position_embeddings(position_ids)
+        #if self.position_embedding_type == "absolute":
+            #position_embeddings = self.position_embeddings(position_ids)
             ###print("BertEmbeddings:position_embeddings:", position_embeddings.shape)
-            embeddings += position_embeddings
+            #embeddings += position_embeddings
         embeddings = self.LayerNorm(embeddings)
         ###print("BertEmbeddings:LayerNorm:", embeddings.shape)
         embeddings = self.dropout(embeddings)

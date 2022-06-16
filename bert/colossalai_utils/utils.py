@@ -6,12 +6,16 @@ from torch.distributed import get_rank
 def init_w_col(builder):
     import colossalai
     from colossalai.core import global_context as gpc
-    from colossalai.nn.optimizer import CPUAdam
+    from colossalai.nn.optimizer import HybridAdam
     from colossalai.zero.init_ctx import ZeroInitContext
     from colossalai.zero.shard_utils import (BucketTensorShardStrategy)
 
-    from colossalai.utils.memory_utils.utils import colo_set_process_memory_fraction
-    colo_set_process_memory_fraction(0.2)
+    from colossalai.utils import colo_set_process_memory_fraction
+
+    from colossalai.logging import disable_existing_loggers
+    disable_existing_loggers()
+
+    colo_set_process_memory_fraction(1.0)
 
     colossalai.launch_from_torch(config=CONFIG)
 
@@ -22,7 +26,7 @@ def init_w_col(builder):
 
     use_zero = "zero" in gpc.config
     if use_zero:
-        cpu_offload = gpc.config.zero.model_config.offload_config.device == 'cpu'
+        cpu_offload = gpc.config.zero.model_config.tensor_placement_policy == 'cpu'
     else:
         cpu_offload = None
 
@@ -46,15 +50,13 @@ def init_w_col(builder):
     print_log(f'Peak Memory = {max_memory_allocated(rank) / (1024 * 1024)} M')
     reset_peak_memory_stats(rank)
 
-    optimizer_kwargs = {}
-    if use_zero and cpu_offload:
-        optimizer_class = CPUAdam
-        optimizer_kwargs = {
-            'lr': CONFIG['hyperparameter']['learning_rate'],
-            'weight_decay': CONFIG['hyperparameter']['weight_decay']
-        }
+    optimizer_class = HybridAdam
+    optimizer_kwargs = {
+        'lr': CONFIG['hyperparameter']['learning_rate'],
+        'weight_decay': CONFIG['hyperparameter']['weight_decay']
+    }
 
-    optimizer = optimizer_class(model.parameters())
+    optimizer = optimizer_class(model.parameters(), **optimizer_kwargs)
 
     lr_scheduler = build_scheduler(len(train_data), optimizer)
     print_log(f'Peak Memory = {max_memory_allocated(rank) / (1024 * 1024)} M')

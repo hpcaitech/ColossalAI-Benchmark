@@ -280,6 +280,5 @@ def train(model, train_data, test_data, criterion, optimizer, scaler, lr_schedul
     else:
         for epoch in range(CONFIG['hyperparameter']['num_epochs']):
             _train(epoch, rank, world_size, train_data, model, criterion, optimizer, lr_scheduler, scaler, mem_monitor)
-            _test(epoch, rank, world_size, test_data, model, criterion, mem_monitor)
 
     print_log('Benchmark complete.')
